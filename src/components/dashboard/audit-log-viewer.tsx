@@ -6,28 +6,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sparkles, AlertTriangle, ShieldCheck, Search, Loader2 } from 'lucide-react';
+import { Sparkles, AlertTriangle, ShieldCheck, Search, Loader2, Database } from 'lucide-react';
 import { adminAuditLogAnalysis, AdminAuditLogAnalysisOutput } from '@/ai/flows/admin-audit-log-analysis-flow';
 import { AuditLog } from '@/lib/types';
-
-const MOCK_LOGS: AuditLog[] = [
-  { id: '1', userId: 'usr_01', email: 'j.doe@neu.edu.ph', action: 'Login Success', timestamp: '2023-10-27 10:15:22', ip: '112.204.1.55', details: 'Normal login via Chrome/macOS' },
-  { id: '2', userId: 'usr_02', email: 'm.smith@neu.edu.ph', action: 'Login Failed', timestamp: '2023-10-27 10:16:05', ip: '45.12.33.102', details: 'Invalid password - Geo: unknown' },
-  { id: '3', userId: 'usr_02', email: 'm.smith@neu.edu.ph', action: 'Login Failed', timestamp: '2023-10-27 10:16:15', ip: '45.12.33.102', details: 'Invalid password - Geo: unknown' },
-  { id: '4', userId: 'usr_02', email: 'm.smith@neu.edu.ph', action: 'Login Success', timestamp: '2023-10-27 10:17:00', ip: '45.12.33.102', details: 'Bypassed lock? Unusual IP pattern' },
-  { id: '5', userId: 'usr_03', email: 'faculty@neu.edu.ph', action: 'Document Download', timestamp: '2023-10-27 11:00:10', ip: '112.204.5.12', details: 'Accessed Sensitive_Grades.pdf' },
-  { id: '6', userId: 'usr_04', email: 'attacker@gmail.com', action: 'Login Failed', timestamp: '2023-10-27 02:00:00', ip: '185.11.22.33', details: 'Restricted domain attempted access' },
-];
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 
 export function AuditLogViewer() {
-  const [logs] = useState(MOCK_LOGS);
+  const db = useFirestore();
   const [analyzing, setAnalyzing] = useState(false);
   const [insights, setInsights] = useState<AdminAuditLogAnalysisOutput | null>(null);
 
+  // Fetch real logs from Firestore
+  const logsQuery = useMemoFirebase(() => db ? query(collection(db, 'activityLogs'), orderBy('timestamp', 'desc'), limit(100)) : null, [db]);
+  const { data: logs, isLoading } = useCollection<AuditLog>(logsQuery);
+
   const runAnalysis = async () => {
+    if (!logs || logs.length === 0) return;
     setAnalyzing(true);
     try {
-      const logString = logs.map(l => `[${l.timestamp}] ${l.email} | ${l.action} | ${l.ip} | ${l.details}`).join('\n');
+      const logString = logs.map(l => `[${l.timestamp}] ${l.email || 'Unknown'} | ${l.action} | ${l.ip || 'N/A'} | ${l.details}`).join('\n');
       const result = await adminAuditLogAnalysis({ auditLogs: logString });
       setInsights(result);
     } catch (error) {
@@ -46,7 +44,7 @@ export function AuditLogViewer() {
         </div>
         <Button 
           onClick={runAnalysis} 
-          disabled={analyzing}
+          disabled={analyzing || !logs || logs.length === 0}
           className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95"
         >
           {analyzing ? (
@@ -64,7 +62,7 @@ export function AuditLogViewer() {
             <CardTitle className="flex items-center gap-2 text-primary">
               <Sparkles className="h-5 w-5" /> AI Security Insights
             </CardTitle>
-            <CardDescription>AI-driven analysis of recent patterns.</CardDescription>
+            <CardDescription>AI-driven analysis of recent patterns based on live data.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {insights.findings.map((finding, idx) => (
@@ -103,17 +101,37 @@ export function AuditLogViewer() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {logs.map((log) => (
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-48 text-center">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    <p className="text-xs text-muted-foreground mt-2">Streaming security logs...</p>
+                  </TableCell>
+                </TableRow>
+              ) : !logs || logs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-48 text-center">
+                    <div className="flex flex-col items-center justify-center space-y-2 opacity-50">
+                      <Database className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm">No security logs recorded yet.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : logs.map((log) => (
                 <TableRow key={log.id} className="hover:bg-muted/10 transition-colors">
-                  <TableCell className="font-mono text-xs">{log.timestamp}</TableCell>
-                  <TableCell className="font-medium">{log.email}</TableCell>
+                  <TableCell className="font-mono text-xs">
+                    {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
+                  </TableCell>
+                  <TableCell className="font-medium">{log.email || 'N/A'}</TableCell>
                   <TableCell>
-                    <Badge variant={log.action.includes('Failed') ? 'destructive' : 'secondary'}>
+                    <Badge variant={log.action.toLowerCase().includes('failed') ? 'destructive' : 'secondary'}>
                       {log.action}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground text-xs">{log.ip}</TableCell>
-                  <TableCell className="text-sm italic text-muted-foreground">{log.details}</TableCell>
+                  <TableCell className="text-muted-foreground text-xs">{log.ip || log.ipAddress || 'N/A'}</TableCell>
+                  <TableCell className="text-sm italic text-muted-foreground truncate max-w-[300px]" title={log.details}>
+                    {log.details}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

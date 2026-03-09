@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   FileText, 
@@ -10,7 +10,8 @@ import {
   ArrowUpRight, 
   Download, 
   MoreHorizontal,
-  ChevronRight
+  ChevronRight,
+  TrendingUp
 } from 'lucide-react';
 import { 
   Bar, 
@@ -28,38 +29,77 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { Document as AppDocument, User as AppUser, AuditLog } from '@/lib/types';
 
-const data = [
-  { name: "Mon", total: 400 },
-  { name: "Tue", total: 300 },
-  { name: "Wed", total: 200 },
-  { name: "Thu", total: 278 },
-  { name: "Fri", total: 189 },
-  { name: "Sat", total: 239 },
-  { name: "Sun", total: 349 },
-];
-
 export function AdminDashboardOverview() {
   const db = useFirestore();
   const [filter, setFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
-  const docsQuery = useMemoFirebase(() => db ? query(collection(db, 'documents'), orderBy('uploadTimestamp', 'desc'), limit(5)) : null, [db]);
+  // Queries for real data
+  const recentDocsQuery = useMemoFirebase(() => db ? query(collection(db, 'documents'), orderBy('uploadTimestamp', 'desc'), limit(5)) : null, [db]);
+  const topDocsQuery = useMemoFirebase(() => db ? query(collection(db, 'documents'), orderBy('downloadCount', 'desc'), limit(4)) : null, [db]);
+  const allDocsQuery = useMemoFirebase(() => db ? collection(db, 'documents') : null, [db]);
   const usersQuery = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
-  const logsQuery = useMemoFirebase(() => db ? query(collection(db, 'activityLogs'), orderBy('timestamp', 'desc'), limit(100)) : null, [db]);
+  const logsQuery = useMemoFirebase(() => db ? query(collection(db, 'activityLogs'), orderBy('timestamp', 'desc'), limit(200)) : null, [db]);
 
-  const { data: recentDocs } = useCollection<AppDocument>(docsQuery);
+  const { data: recentDocs } = useCollection<AppDocument>(recentDocsQuery);
+  const { data: topDocs } = useCollection<AppDocument>(topDocsQuery);
+  const { data: allDocs } = useCollection<AppDocument>(allDocsQuery);
   const { data: allUsers } = useCollection<AppUser>(usersQuery);
   const { data: recentLogs } = useCollection<AuditLog>(logsQuery);
 
-  const stats = {
-    totalDocs: recentDocs?.length || 0,
-    totalUsers: allUsers?.length || 0,
-    activeNow: allUsers?.filter(u => {
-      if (!u.lastLogin) return false;
-      const lastSeen = new Date(u.lastLogin).getTime();
-      return Date.now() - lastSeen < 15 * 60 * 1000;
-    }).length || 0,
-    dailyLogins: recentLogs?.filter(l => l.action.toLowerCase().includes('login')).length || 0
-  };
+  // Calculate real stats
+  const stats = useMemo(() => {
+    const activeThreshold = 15 * 60 * 1000; // 15 minutes
+    const now = Date.now();
+
+    return {
+      totalDocs: allDocs?.length || 0,
+      totalUsers: allUsers?.filter(u => u.role === 'student').length || 0,
+      activeNow: allUsers?.filter(u => {
+        if (!u.lastLogin) return false;
+        const lastSeen = new Date(u.lastLogin).getTime();
+        return now - lastSeen < activeThreshold;
+      }).length || 0,
+      dailyLogins: recentLogs?.filter(l => {
+        const logDate = new Date(l.timestamp);
+        const isToday = logDate.toDateString() === new Date().toDateString();
+        return isToday && l.action.toLowerCase().includes('login');
+      }).length || 0
+    };
+  }, [allDocs, allUsers, recentLogs]);
+
+  // Generate chart data from real logs
+  const chartData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const counts: Record<string, number> = {};
+    
+    // Initialize last 7 days with 0
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      counts[days[d.getDay()]] = 0;
+    }
+
+    if (recentLogs) {
+      recentLogs.forEach(log => {
+        const logDate = new Date(log.timestamp);
+        const dayName = days[logDate.getDay()];
+        // Only count logins for current week days we initialized
+        if (counts[dayName] !== undefined && log.action.toLowerCase().includes('login')) {
+          counts[dayName]++;
+        }
+      });
+    }
+
+    // Sort to ensure correct sequence Mon-Sun (or whatever the current 7-day window is)
+    const result = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const name = days[d.getDay()];
+      result.push({ name, total: counts[name] });
+    }
+    return result;
+  }, [recentLogs]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -93,14 +133,14 @@ export function AdminDashboardOverview() {
                 <FileText className="h-6 w-6" />
               </div>
               <Badge className="bg-emerald-50 text-emerald-600 border-none flex items-center gap-1">
-                <ArrowUpRight className="h-3 w-3" /> 12%
+                <TrendingUp className="h-3 w-3" /> Real-time
               </Badge>
             </div>
             <div className="mt-4">
               <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest">Total Documents</p>
-              <h3 className="text-3xl font-bold text-[#0F172A] mt-1">24,592</h3>
+              <h3 className="text-3xl font-bold text-[#0F172A] mt-1">{stats.totalDocs.toLocaleString()}</h3>
               <div className="mt-4 h-1 w-full bg-[#F1F5F9] rounded-full overflow-hidden">
-                <div className="h-full bg-blue-600 w-[65%]" />
+                <div className="h-full bg-blue-600 w-[100%]" />
               </div>
             </div>
           </CardContent>
@@ -113,15 +153,15 @@ export function AdminDashboardOverview() {
                 <LogIn className="h-6 w-6" />
               </div>
               <Badge className="bg-emerald-50 text-emerald-600 border-none flex items-center gap-1">
-                <ArrowUpRight className="h-3 w-3" /> 5.2%
+                Live Activity
               </Badge>
             </div>
             <div className="mt-4">
-              <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest">Student Logins (Daily)</p>
+              <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest">Student Logins (Today)</p>
               <h3 className="text-3xl font-bold text-[#0F172A] mt-1">{stats.dailyLogins.toLocaleString()}</h3>
               <div className="mt-4 flex gap-1 items-end h-8">
-                {[40, 60, 30, 80, 50, 90].map((h, i) => (
-                  <div key={i} className="flex-1 bg-amber-200 rounded-t-sm" style={{ height: `${h}%` }} />
+                {chartData.map((d, i) => (
+                  <div key={i} className="flex-1 bg-amber-200 rounded-t-sm" style={{ height: `${Math.min(100, (d.total / (stats.dailyLogins || 1)) * 100)}%` }} />
                 ))}
               </div>
             </div>
@@ -161,7 +201,7 @@ export function AdminDashboardOverview() {
           <CardContent>
             <div className="h-[300px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data}>
+                <LineChart data={chartData}>
                   <XAxis 
                     dataKey="name" 
                     stroke="#94A3B8" 
@@ -199,25 +239,22 @@ export function AdminDashboardOverview() {
             <CardTitle className="text-lg font-bold text-[#0F172A]">Top Downloaded Docs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {[
-              { id: 1, name: "CICS_Handbook_2023", count: "2.4k", color: "text-red-500", bg: "bg-red-50" },
-              { id: 2, name: "Thesis_Format_Guide", count: "1.8k", color: "text-blue-500", bg: "bg-blue-50" },
-              { id: 3, name: "Enrollment_Schedule", count: "1.5k", color: "text-emerald-500", bg: "bg-emerald-50" },
-              { id: 4, name: "Orientation_Slides", count: "1.2k", color: "text-amber-500", bg: "bg-amber-50" },
-            ].map((doc) => (
+            {topDocs && topDocs.length > 0 ? topDocs.map((doc, idx) => (
               <div key={doc.id} className="flex items-center justify-between group cursor-pointer">
                 <div className="flex items-center gap-4">
-                  <div className={`h-10 w-10 ${doc.bg} ${doc.color} rounded-lg flex items-center justify-center shrink-0`}>
+                  <div className="h-10 w-10 bg-orange-50 text-primary rounded-lg flex items-center justify-center shrink-0">
                     <FileText className="h-5 w-5" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#0F172A] group-hover:text-[#F2780D] transition-colors">{doc.name}</p>
-                    <p className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-wider">{doc.count} downloads</p>
+                    <p className="text-[10px] text-[#94A3B8] font-bold uppercase tracking-wider">{(doc.downloadCount || 0).toLocaleString()} downloads</p>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-[#CBD5E1]">#{doc.id}</span>
+                <span className="text-xs font-bold text-[#CBD5E1]">#{idx + 1}</span>
               </div>
-            ))}
+            )) : (
+              <p className="text-center py-12 text-[#94A3B8] text-sm">No download data available.</p>
+            )}
             <Button variant="outline" className="w-full mt-4 rounded-xl border-[#F1F5F9] font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]">
               View All Stats
             </Button>
@@ -244,7 +281,7 @@ export function AdminDashboardOverview() {
               </thead>
               <tbody className="divide-y divide-[#F1F5F9]">
                 {recentDocs && recentDocs.length > 0 ? (
-                  recentDocs.slice(0, 5).map((doc) => (
+                  recentDocs.map((doc) => (
                     <tr key={doc.id} className="hover:bg-[#F8FAFC] transition-colors">
                       <td className="px-6 py-4 text-sm font-bold text-[#0F172A]">{doc.name}</td>
                       <td className="px-6 py-4 text-xs text-[#64748B]">{doc.uploaderName}</td>
