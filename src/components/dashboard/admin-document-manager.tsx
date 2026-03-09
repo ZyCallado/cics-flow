@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef } from 'react';
@@ -26,6 +25,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -130,7 +130,6 @@ export function AdminDocumentManager() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700 max-w-7xl mx-auto">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-[#0F172A]">Documents Management</h1>
@@ -181,7 +180,6 @@ export function AdminDocumentManager() {
         </Dialog>
       </div>
 
-      {/* Search Section */}
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#94A3B8]" />
         <Input 
@@ -192,7 +190,6 @@ export function AdminDocumentManager() {
         />
       </div>
 
-      {/* Table Section */}
       <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
         <CardContent className="p-0">
           <Table>
@@ -246,7 +243,6 @@ export function AdminDocumentManager() {
             </TableBody>
           </Table>
           
-          {/* Pagination Placeholder */}
           <div className="flex items-center justify-between px-6 py-6 border-t border-[#F1F5F9] bg-[#F8FAFC]/50">
             <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider">
               Showing {filteredDocs.length > 0 ? 1 : 0} to {filteredDocs.length} of {filteredDocs.length} documents
@@ -266,7 +262,6 @@ export function AdminDocumentManager() {
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
       {editingDoc && (
         <Dialog open={!!editingDoc} onOpenChange={(open) => !open && setEditingDoc(null)}>
           <DialogContent className="sm:max-w-[500px] rounded-2xl shadow-2xl">
@@ -302,7 +297,6 @@ export function AdminDocumentManager() {
         </Dialog>
       )}
 
-      {/* Delete Alert */}
       <AlertDialog open={!!deletingDocId} onOpenChange={(open) => !open && setDeletingDocId(null)}>
         <AlertDialogContent className="rounded-2xl shadow-2xl border-none">
           <AlertDialogHeader>
