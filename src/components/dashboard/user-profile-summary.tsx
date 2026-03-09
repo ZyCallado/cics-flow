@@ -5,7 +5,7 @@ import { User } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Shield, Calendar, GraduationCap } from 'lucide-react';
+import { Mail, Shield, Calendar, GraduationCap, Clock } from 'lucide-react';
 
 interface UserProfileSummaryProps {
   user: User;
@@ -27,14 +27,16 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
           <div className="text-center">
             <h3 className="text-xl font-headline font-bold text-foreground">{user.name}</h3>
             <div className="flex flex-col items-center gap-1 mt-1">
-              <Badge variant={user.role === 'admin' ? 'secondary' : 'default'}>
-                {user.role.toUpperCase()}
-              </Badge>
-              {user.program && (
-                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
-                  {user.program.split('(')[1]?.replace(')', '') || user.program}
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                <Badge variant={user.role === 'admin' ? 'secondary' : 'default'}>
+                  {user.role.toUpperCase()}
+                </Badge>
+                {user.role === 'student' && user.yearLevel && (
+                  <Badge variant="outline" className="border-primary text-primary bg-primary/5">
+                    {user.yearLevel}
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
 
@@ -44,9 +46,9 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
               <span className="truncate max-w-[180px]">{user.email}</span>
             </div>
             {user.role === 'student' && user.program && (
-              <div className="flex items-center gap-3">
-                <GraduationCap className="h-4 w-4 text-primary" />
-                <span className="text-xs">{user.program}</span>
+              <div className="flex items-start gap-3">
+                <GraduationCap className="h-4 w-4 text-primary mt-1 shrink-0" />
+                <span className="text-xs leading-relaxed">{user.program}</span>
               </div>
             )}
             <div className="flex items-center gap-3">
@@ -54,8 +56,8 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
               <span>Verified Institution Account</span>
             </div>
             <div className="flex items-center gap-3">
-              <Calendar className="h-4 w-4 text-primary" />
-              <span>Last Sync: {new Date(user.lastLogin).toLocaleDateString()}</span>
+              <Clock className="h-4 w-4 text-primary" />
+              <span>Joined: {new Date(user.lastLogin).toLocaleDateString()}</span>
             </div>
           </div>
         </div>

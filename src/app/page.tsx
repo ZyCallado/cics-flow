@@ -13,7 +13,7 @@ import { User as AppUser, UserRole } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock, TrendingUp, AlertCircle, Loader2, Search, ExternalLink, ShieldCheck } from 'lucide-react';
+import { FileText, Clock, TrendingUp, AlertCircle, Loader2, Search, ExternalLink, ShieldCheck, GraduationCap } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, useCollection } from '@/firebase';
 import { doc, serverTimestamp, collection, query, limit } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -60,17 +60,17 @@ export default function Home() {
         role: role,
         lastLogin: new Date().toISOString(),
         photoURL: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
-        ...(profileDoc?.program ? { program: profileDoc.program } : {})
+        ...(profileDoc?.program ? { program: profileDoc.program } : {}),
+        ...(profileDoc?.yearLevel ? { yearLevel: profileDoc.yearLevel } : {})
       };
       setAppUser(userData);
 
-      // Trigger onboarding for students without a program
-      if (role === 'student' && !profileDoc?.program) {
+      // Trigger onboarding for students without a program or year level
+      if (role === 'student' && (!profileDoc?.program || !profileDoc?.yearLevel)) {
         setShowOnboarding(true);
       }
 
       // Sync last login
-      // We explicitly exclude 'program' if it's undefined to avoid Firestore errors
       const syncData: any = {
         uid: userData.uid,
         email: userData.email,
@@ -81,6 +81,7 @@ export default function Home() {
         updatedAt: serverTimestamp(),
       };
       if (userData.program) syncData.program = userData.program;
+      if (userData.yearLevel) syncData.yearLevel = userData.yearLevel;
 
       setDocumentNonBlocking(doc(db, 'users', authUser.uid), syncData, { merge: true });
 
@@ -97,9 +98,9 @@ export default function Home() {
     setShowOnboarding(false);
   };
 
-  const handleOnboardingComplete = (program: string) => {
+  const handleOnboardingComplete = (program: string, yearLevel: string) => {
     if (appUser) {
-      setAppUser({ ...appUser, program });
+      setAppUser({ ...appUser, program, yearLevel });
     }
     setShowOnboarding(false);
   };
@@ -128,7 +129,6 @@ export default function Home() {
     <div className="min-h-screen bg-background flex flex-col md:flex-row font-body">
       {showOnboarding && <OnboardingFlow userId={appUser.uid} onComplete={handleOnboardingComplete} />}
       
-      {/* Sidebar for Desktop */}
       <aside className="hidden md:block w-72 shrink-0 h-screen sticky top-0 overflow-y-auto z-40">
         <SidebarNav 
           role={appUser.role} 
@@ -138,7 +138,6 @@ export default function Home() {
         />
       </aside>
 
-      {/* Main Content Area */}
       <main className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
           {activeTab === 'dashboard' && (
@@ -149,7 +148,7 @@ export default function Home() {
                   <p className="text-muted-foreground">
                     {appUser.role === 'admin' 
                       ? "Administrative Control Center" 
-                      : `Access your ${appUser.program?.split('(')[1]?.replace(')', '') || 'student'} resources.`
+                      : `Access your ${appUser.program || 'student'} resources.`
                     }
                   </p>
                 </div>
@@ -172,23 +171,27 @@ export default function Home() {
                       <div className="h-10 w-10 bg-secondary/10 rounded-lg flex items-center justify-center mb-2">
                         <Clock className="text-secondary w-5 h-5" />
                       </div>
-                      <CardTitle className="text-sm font-medium">Active Logs</CardTitle>
+                      <CardTitle className="text-sm font-medium">Academic Info</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-headline font-bold">Live</div>
-                      <p className="text-xs text-muted-foreground">Security active</p>
+                      <div className="text-xl font-headline font-bold truncate">
+                        {appUser.role === 'student' ? (appUser.yearLevel || 'Student') : 'Admin'}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Status active</p>
                     </CardContent>
                   </Card>
                   <Card className="border-none shadow-sm bg-white hover:shadow-md transition-shadow">
                     <CardHeader className="pb-2">
                       <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center mb-2">
-                        <TrendingUp className="text-orange-600 w-5 h-5" />
+                        <GraduationCap className="text-orange-600 w-5 h-5" />
                       </div>
-                      <CardTitle className="text-sm font-medium">System</CardTitle>
+                      <CardTitle className="text-sm font-medium">Program</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">Stable</Badge>
-                      <p className="text-xs text-muted-foreground mt-2">All units online</p>
+                      <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 truncate max-w-full block text-center">
+                        {appUser.role === 'student' ? (appUser.program?.split(' ').pop() || 'CICS') : 'Staff'}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-2 text-center">Portal connected</p>
                     </CardContent>
                   </Card>
                 </div>
