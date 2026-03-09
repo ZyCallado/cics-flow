@@ -9,7 +9,6 @@ export interface User {
   photoURL?: string;
   lastLogin: string;
   program?: string;
-  yearLevel?: string; // Added for student onboarding
 }
 
 export interface Document {

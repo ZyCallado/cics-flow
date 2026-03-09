@@ -5,7 +5,7 @@ import { User } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Shield, Calendar, GraduationCap, Clock } from 'lucide-react';
+import { Mail, Shield, GraduationCap, Clock } from 'lucide-react';
 
 interface UserProfileSummaryProps {
   user: User;
@@ -31,11 +31,6 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
                 <Badge variant={user.role === 'admin' ? 'secondary' : 'default'}>
                   {user.role.toUpperCase()}
                 </Badge>
-                {user.role === 'student' && user.yearLevel && (
-                  <Badge variant="outline" className="border-primary text-primary bg-primary/5">
-                    {user.yearLevel}
-                  </Badge>
-                )}
               </div>
             </div>
           </div>

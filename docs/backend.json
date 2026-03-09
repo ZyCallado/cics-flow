@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -25,6 +26,10 @@
           "items": {
             "type": "string"
           }
+        },
+        "program": {
+          "type": "string",
+          "description": "The undergraduate program the student belongs to."
         },
         "googleId": {
           "type": "string",

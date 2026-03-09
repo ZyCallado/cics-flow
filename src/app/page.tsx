@@ -62,13 +62,12 @@ export default function Home() {
         lastLogin: new Date().toISOString(),
         photoURL: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
         ...(profileDoc?.program ? { program: profileDoc.program } : {}),
-        ...(profileDoc?.yearLevel ? { yearLevel: profileDoc.yearLevel } : {})
       };
       
       setAppUser(userData);
 
-      // Trigger onboarding for students without a program or year level
-      if (role === 'student' && (!profileDoc?.program || !profileDoc?.yearLevel)) {
+      // Trigger onboarding for students without a program
+      if (role === 'student' && !profileDoc?.program) {
         setShowOnboarding(true);
       }
 
@@ -85,7 +84,6 @@ export default function Home() {
           updatedAt: serverTimestamp(),
         };
         if (userData.program) syncData.program = userData.program;
-        if (userData.yearLevel) syncData.yearLevel = userData.yearLevel;
 
         setDocumentNonBlocking(doc(db, 'users', authUser.uid), syncData, { merge: true });
       }
@@ -105,9 +103,9 @@ export default function Home() {
     hasSyncedProfile.current = false;
   };
 
-  const handleOnboardingComplete = (program: string, yearLevel: string) => {
+  const handleOnboardingComplete = (program: string) => {
     if (appUser) {
-      setAppUser({ ...appUser, program, yearLevel });
+      setAppUser({ ...appUser, program });
     }
     setShowOnboarding(false);
   };
@@ -178,11 +176,11 @@ export default function Home() {
                       <div className="h-10 w-10 bg-secondary/10 rounded-lg flex items-center justify-center mb-2">
                         <Clock className="text-secondary w-5 h-5" />
                       </div>
-                      <CardTitle className="text-sm font-medium">Academic Info</CardTitle>
+                      <CardTitle className="text-sm font-medium">Account Type</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-xl font-headline font-bold truncate">
-                        {appUser.role === 'student' ? (appUser.yearLevel || 'Student') : 'Admin'}
+                        {appUser.role.toUpperCase()}
                       </div>
                       <p className="text-xs text-muted-foreground">Status active</p>
                     </CardContent>
