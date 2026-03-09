@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -5,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogIn, ShieldCheck, Mail, Lock, Loader2, UserPlus, AlertCircle } from 'lucide-react';
+import { LogIn, ShieldCheck, Mail, Lock, Loader2, UserPlus, AlertCircle, Chrome } from 'lucide-react';
 import { useAuth } from '@/firebase';
-import { initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
+import { initiateEmailSignIn, initiateEmailSignUp, initiateGoogleSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 
 export function LoginForm() {
@@ -21,7 +22,7 @@ export function LoginForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Strict domain validation
+    // Strict domain validation for email/password
     if (!email.toLowerCase().endsWith('@neu.edu.ph')) {
       toast({
         variant: "destructive",
@@ -51,6 +52,8 @@ export function LoginForm() {
         errorMessage = "This email is already registered. Try signing in.";
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "Password should be at least 6 characters.";
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = "The login popup was closed before completion.";
       }
 
       toast({
@@ -65,6 +68,22 @@ export function LoginForm() {
     } else {
       initiateEmailSignIn(auth, email, password, callback);
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    setIsLoading(true);
+    initiateGoogleSignIn(auth, (error) => {
+      setIsLoading(false);
+      let errorMessage = "Google authentication failed.";
+      if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = "Login popup closed before completion.";
+      }
+      toast({
+        variant: "destructive",
+        title: "Google Auth Failed",
+        description: errorMessage,
+      });
+    });
   };
 
   return (
@@ -85,8 +104,27 @@ export function LoginForm() {
             {isSignUp ? 'Join CICS Flow to manage your documents.' : 'Enter your credentials to access your account.'}
           </CardDescription>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
+        <CardContent className="space-y-4">
+          <Button 
+            variant="outline" 
+            onClick={handleGoogleSignIn} 
+            disabled={isLoading}
+            className="w-full h-12 border-[#E2E8F0] hover:bg-[#F8FAFC] font-bold text-[#475569] gap-3"
+          >
+            <Chrome className="w-5 h-5" />
+            Sign in with Google
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-[#F1F5F9]" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-[#94A3B8] font-bold">Or continue with email</span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email" className="flex items-center gap-2">
                 <Mail className="w-4 h-4" /> Email Address
@@ -122,8 +160,7 @@ export function LoginForm() {
               <AlertCircle className="h-4 w-4 shrink-0" />
               <p>Restriction Active: Only <strong>@neu.edu.ph</strong> accounts are authorized for access.</p>
             </div>
-          </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
+
             <Button 
               type="submit"
               disabled={isLoading}
@@ -138,19 +175,20 @@ export function LoginForm() {
                 </>
               )}
             </Button>
-            
-            <Button 
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={isLoading}
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-primary hover:text-primary/80 hover:bg-primary/5"
-            >
-              {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
-            </Button>
-          </CardFooter>
-        </form>
+          </form>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
+          <Button 
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isLoading}
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-primary hover:text-primary/80 hover:bg-primary/5"
+          >
+            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );

@@ -1,9 +1,12 @@
+
 'use client';
 import {
   Auth,
   signInAnonymously,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 
 /** 
@@ -38,4 +41,15 @@ export function initiateEmailSignUp(authInstance: Auth, email: string, password:
 export function initiateEmailSignIn(authInstance: Auth, email: string, password: string, onError?: (error: any) => void): void {
   // CRITICAL: Call signInWithEmailAndPassword directly. Do NOT use 'await'.
   signInWithEmailAndPassword(authInstance, email, password).catch(onError);
+}
+
+/**
+ * Initiate Google sign-in (non-blocking).
+ * @param authInstance The Firebase Auth instance.
+ * @param onError Optional callback for error handling.
+ */
+export function initiateGoogleSignIn(authInstance: Auth, onError?: (error: any) => void): void {
+  const provider = new GoogleAuthProvider();
+  // CRITICAL: Call signInWithPopup directly. Do NOT use 'await'.
+  signInWithPopup(authInstance, provider).catch(onError);
 }

@@ -18,11 +18,13 @@ import { doc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
   const { user: authUser, isUserLoading } = useUser();
   const auth = useAuth();
   const db = useFirestore();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const hasSyncedProfile = useRef(false);
@@ -43,13 +45,27 @@ export default function Home() {
 
   useEffect(() => {
     if (authUser && !isAdminChecking && !isProfileLoading && db) {
-      const role: UserRole = adminDoc ? 'admin' : 'student';
-      const emailUsername = authUser.email ? authUser.email.split('@')[0] : (role === 'admin' ? 'Administrator' : 'Student');
+      const isAdmin = !!adminDoc;
+      const email = authUser.email || '';
+      
+      // Domain Restriction Logic
+      if (!isAdmin && email && !email.toLowerCase().endsWith('@neu.edu.ph')) {
+        signOut(auth);
+        toast({
+          variant: "destructive",
+          title: "Access Restricted",
+          description: "This portal is strictly for @neu.edu.ph institutional accounts.",
+        });
+        return;
+      }
+
+      const role: UserRole = isAdmin ? 'admin' : 'student';
+      const emailUsername = email ? email.split('@')[0] : (role === 'admin' ? 'Administrator' : 'Student');
       
       const userData: AppUser = {
         uid: authUser.uid,
-        email: authUser.email || '',
-        name: emailUsername,
+        email: email,
+        name: authUser.displayName || emailUsername,
         role: role,
         lastLogin: new Date().toISOString(),
         photoURL: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
@@ -84,7 +100,7 @@ export default function Home() {
       setShowOnboarding(false);
       hasSyncedProfile.current = false;
     }
-  }, [authUser, adminDoc, profileDoc, isAdminChecking, isProfileLoading, db, isUserLoading]);
+  }, [authUser, adminDoc, profileDoc, isAdminChecking, isProfileLoading, db, isUserLoading, auth, toast]);
 
   const handleLogout = async () => {
     if (auth) {
@@ -164,7 +180,7 @@ export default function Home() {
             {activeTab === 'users' && appUser.role === 'admin' && <AdminUserManagement />}
             {activeTab === 'audit' && appUser.role === 'admin' && <AuditLogViewer />}
 
-            {(activeTab === 'history' || activeTab === 'settings' || activeTab === 'downloads' || activeTab === 'curriculum' || activeTab === 'grades') && (
+            {(activeTab === 'history' || activeTab === 'settings' || activeTab === 'downloads' || activeTab === 'curriculum' || activeTab === 'grades' || activeTab === 'library' || activeTab === 'support') && (
               <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6 animate-in zoom-in-95 duration-500">
                 <div className="h-24 w-24 bg-white rounded-3xl shadow-xl flex items-center justify-center">
                   <Settings className="h-12 w-12 text-[#CBD5E1]" />
