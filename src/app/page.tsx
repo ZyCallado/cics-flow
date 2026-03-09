@@ -13,7 +13,7 @@ import { User as AppUser, UserRole } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock, TrendingUp, AlertCircle, Loader2, Search, ExternalLink, ShieldCheck, GraduationCap } from 'lucide-react';
+import { FileText, Clock, TrendingUp, AlertCircle, Loader2, Search, ExternalLink, ShieldCheck, GraduationCap, Settings } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, useCollection } from '@/firebase';
 import { doc, serverTimestamp, collection, query, limit } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -63,6 +63,7 @@ export default function Home() {
       
       setAppUser(userData);
 
+      // Only show onboarding for students who haven't selected a program
       if (role === 'student' && !profileDoc?.program) {
         setShowOnboarding(true);
       } else {
@@ -224,9 +225,11 @@ export default function Home() {
                     <p className="text-[#94A3B8] text-sm leading-relaxed">
                       All document transactions and administrative access attempts are recorded for institutional security monitoring.
                     </p>
-                    <Button variant="link" className="p-0 text-primary font-bold hover:text-primary/80 no-underline group-hover:underline" onClick={() => setActiveTab('audit')}>
-                      Open Audit Dashboard →
-                    </Button>
+                    {appUser.role === 'admin' && (
+                      <Button variant="link" className="p-0 text-primary font-bold hover:text-primary/80 no-underline group-hover:underline" onClick={() => setActiveTab('audit')}>
+                        Open Audit Dashboard →
+                      </Button>
+                    )}
                   </div>
                 </Card>
               </div>
