@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 import { OnboardingFlow } from '@/components/auth/onboarding-flow';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
@@ -25,6 +25,7 @@ export default function Home() {
   const db = useFirestore();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const hasSyncedProfile = useRef(false);
 
   // Fetch application user profile
   const userProfileRef = useMemoFirebase(() => {
@@ -63,6 +64,7 @@ export default function Home() {
         ...(profileDoc?.program ? { program: profileDoc.program } : {}),
         ...(profileDoc?.yearLevel ? { yearLevel: profileDoc.yearLevel } : {})
       };
+      
       setAppUser(userData);
 
       // Trigger onboarding for students without a program or year level
@@ -70,23 +72,27 @@ export default function Home() {
         setShowOnboarding(true);
       }
 
-      // Sync last login
-      const syncData: any = {
-        uid: userData.uid,
-        email: userData.email,
-        name: userData.name,
-        role: userData.role,
-        lastLogin: userData.lastLogin,
-        photoURL: userData.photoURL,
-        updatedAt: serverTimestamp(),
-      };
-      if (userData.program) syncData.program = userData.program;
-      if (userData.yearLevel) syncData.yearLevel = userData.yearLevel;
+      // Sync last login and user info - only once per session or profile change to avoid loop
+      if (!hasSyncedProfile.current) {
+        hasSyncedProfile.current = true;
+        const syncData: any = {
+          uid: userData.uid,
+          email: userData.email,
+          name: userData.name,
+          role: userData.role,
+          lastLogin: userData.lastLogin,
+          photoURL: userData.photoURL,
+          updatedAt: serverTimestamp(),
+        };
+        if (userData.program) syncData.program = userData.program;
+        if (userData.yearLevel) syncData.yearLevel = userData.yearLevel;
 
-      setDocumentNonBlocking(doc(db, 'users', authUser.uid), syncData, { merge: true });
+        setDocumentNonBlocking(doc(db, 'users', authUser.uid), syncData, { merge: true });
+      }
 
     } else if (!authUser && !isUserLoading) {
       setAppUser(null);
+      hasSyncedProfile.current = false;
     }
   }, [authUser, adminDoc, profileDoc, isAdminChecking, isProfileLoading, db, isUserLoading]);
 
@@ -96,6 +102,7 @@ export default function Home() {
     }
     setActiveTab('dashboard');
     setShowOnboarding(false);
+    hasSyncedProfile.current = false;
   };
 
   const handleOnboardingComplete = (program: string, yearLevel: string) => {
