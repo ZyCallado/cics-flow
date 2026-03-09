@@ -18,7 +18,7 @@ import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function Home() {
   const { user: authUser, isUserLoading } = useUser();
-  const { auth } = useAuth();
+  const auth = useAuth();
   const db = useFirestore();
   const [activeTab, setActiveTab] = useState('dashboard');
 
