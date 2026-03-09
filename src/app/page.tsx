@@ -9,12 +9,15 @@ import { TopNav } from '@/components/dashboard/top-nav';
 import { AuditLogViewer } from '@/components/dashboard/audit-log-viewer';
 import { AdminDocumentManager } from '@/components/dashboard/admin-document-manager';
 import { StudentDocumentBrowser } from '@/components/dashboard/student-document-browser';
+import { AdminDashboardOverview } from '@/components/dashboard/admin-dashboard-overview';
+import { AdminUserManagement } from '@/components/dashboard/admin-user-management';
 import { User as AppUser, UserRole } from '@/lib/types';
-import { Loader2, Settings } from 'lucide-react';
+import { Loader2, Settings, ShieldAlert } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth } from '@/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Button } from '@/components/ui/button';
 
 export default function Home() {
   const { user: authUser, isUserLoading } = useUser();
@@ -50,18 +53,19 @@ export default function Home() {
         role: role,
         lastLogin: new Date().toISOString(),
         photoURL: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
+        isBlocked: profileDoc?.isBlocked || false,
         ...(profileDoc?.program ? { program: profileDoc.program } : {}),
       };
       
       setAppUser(userData);
 
-      if (role === 'student' && !profileDoc?.program) {
+      if (role === 'student' && !profileDoc?.program && !userData.isBlocked) {
         setShowOnboarding(true);
       } else {
         setShowOnboarding(false);
       }
 
-      if (!hasSyncedProfile.current) {
+      if (!hasSyncedProfile.current && !userData.isBlocked) {
         hasSyncedProfile.current = true;
         const syncData: any = {
           uid: userData.uid,
@@ -114,6 +118,26 @@ export default function Home() {
     );
   }
 
+  // Handle Blocked Users
+  if (appUser.isBlocked) {
+    return (
+      <main className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-8 text-center space-y-6">
+        <div className="h-24 w-24 bg-red-100 rounded-3xl shadow-xl flex items-center justify-center">
+          <ShieldAlert className="h-12 w-12 text-red-500" />
+        </div>
+        <div className="space-y-2 max-w-md">
+          <h1 className="text-3xl font-bold text-[#0F172A]">Account Restricted</h1>
+          <p className="text-[#64748B]">
+            Your access to the CICS Portal has been suspended by an administrator. Please contact your department for clarification.
+          </p>
+        </div>
+        <Button onClick={handleLogout} className="bg-[#0F172A] hover:bg-black rounded-xl px-8 h-12 font-bold">
+          Sign Out
+        </Button>
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex font-body">
       {showOnboarding && <OnboardingFlow userId={appUser.uid} onComplete={handleOnboardingComplete} />}
@@ -134,17 +158,13 @@ export default function Home() {
         <main className="flex-1 p-8 md:p-12 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && appUser.role === 'student' && <StudentDocumentBrowser user={appUser} />}
-            {activeTab === 'dashboard' && appUser.role === 'admin' && (
-              <div className="space-y-8 animate-in fade-in duration-700">
-                <h1 className="text-4xl font-bold tracking-tight text-[#0F172A]">Admin Overview</h1>
-                <p className="text-[#64748B] text-lg">System analytics and registry monitoring coming soon.</p>
-              </div>
-            )}
+            {activeTab === 'dashboard' && appUser.role === 'admin' && <AdminDashboardOverview />}
             
             {activeTab === 'all-docs' && appUser.role === 'admin' && <AdminDocumentManager />}
+            {activeTab === 'users' && appUser.role === 'admin' && <AdminUserManagement />}
             {activeTab === 'audit' && appUser.role === 'admin' && <AuditLogViewer />}
 
-            {(activeTab === 'users' || activeTab === 'history' || activeTab === 'settings' || activeTab === 'downloads' || activeTab === 'curriculum' || activeTab === 'grades') && (
+            {(activeTab === 'history' || activeTab === 'settings' || activeTab === 'downloads' || activeTab === 'curriculum' || activeTab === 'grades') && (
               <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6 animate-in zoom-in-95 duration-500">
                 <div className="h-24 w-24 bg-white rounded-3xl shadow-xl flex items-center justify-center">
                   <Settings className="h-12 w-12 text-[#CBD5E1]" />

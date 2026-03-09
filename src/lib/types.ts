@@ -9,6 +9,7 @@ export interface User {
   photoURL?: string;
   lastLogin: string;
   program?: string;
+  isBlocked?: boolean;
 }
 
 export interface Document {
@@ -24,6 +25,7 @@ export interface Document {
   permissions: string[];
   createdAt: string;
   updatedAt: string;
+  downloadCount?: number;
 }
 
 export interface AuditLog {
@@ -34,4 +36,5 @@ export interface AuditLog {
   timestamp: string;
   ip: string;
   details: string;
+  documentId?: string;
 }
