@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -22,6 +22,16 @@ import {
   DialogTrigger 
 } from '@/components/ui/dialog';
 import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { 
   Select, 
   SelectContent, 
   SelectItem, 
@@ -37,7 +47,8 @@ import {
   ExternalLink, 
   Loader2,
   FilePlus,
-  Filter
+  Filter,
+  Upload
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -48,9 +59,13 @@ export function AdminDocumentManager() {
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<AppDocument | null>(null);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // Firestore Collection Reference
   const docsQuery = useMemoFirebase(() => {
@@ -66,6 +81,22 @@ export function AdminDocumentManager() {
     doc.uploaderName.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type !== 'application/pdf') {
+        toast({
+          variant: "destructive",
+          title: "Invalid File Type",
+          description: "Only PDF documents are allowed."
+        });
+        e.target.value = '';
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
   const handleSaveDocument = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!db || !user) return;
@@ -76,7 +107,7 @@ export function AdminDocumentManager() {
       category: formData.get('category') as string,
       description: formData.get('description') as string,
       type: 'application/pdf',
-      storagePath: `https://neu.edu.ph/docs/${Date.now()}.pdf`, // Mock storage path
+      storagePath: selectedFile ? `https://neu.edu.ph/docs/simulated/${selectedFile.name}` : (editingDoc?.storagePath || `https://neu.edu.ph/docs/${Date.now()}.pdf`),
       uploaderId: user.uid,
       uploaderName: user.displayName || 'Administrator',
       uploadTimestamp: new Date().toISOString(),
@@ -91,6 +122,7 @@ export function AdminDocumentManager() {
         updatedAt: serverTimestamp(),
       });
       setEditingDoc(null);
+      setSelectedFile(null);
       toast({ title: "Document Updated", description: "Metadata has been saved successfully." });
     } else {
       const newDocRef = doc(collection(db, 'documents'));
@@ -100,14 +132,16 @@ export function AdminDocumentManager() {
         createdAt: serverTimestamp(),
       }, { merge: true });
       setIsCreateOpen(false);
+      setSelectedFile(null);
       toast({ title: "Document Created", description: "New document entry added to system." });
     }
   };
 
-  const handleDelete = (docId: string) => {
-    if (!db || !confirm('Are you sure you want to delete this document record?')) return;
-    const docRef = doc(db, 'documents', docId);
+  const confirmDelete = () => {
+    if (!db || !deletingDocId) return;
+    const docRef = doc(db, 'documents', deletingDocId);
     deleteDocumentNonBlocking(docRef);
+    setDeletingDocId(null);
     toast({ variant: "destructive", title: "Document Deleted", description: "Record has been removed from system." });
   };
 
@@ -119,7 +153,10 @@ export function AdminDocumentManager() {
           <p className="text-muted-foreground">Admin-only workspace for institutional documents.</p>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={(open) => {
+          setIsCreateOpen(open);
+          if (!open) setSelectedFile(null);
+        }}>
           <DialogTrigger asChild>
             <Button className="bg-primary hover:bg-primary/90">
               <FilePlus className="mr-2 h-4 w-4" />
@@ -130,7 +167,7 @@ export function AdminDocumentManager() {
             <DialogHeader>
               <DialogTitle>Add Document Record</DialogTitle>
               <DialogDescription>
-                Create a new document entry. Note: Files are simulated for this prototype.
+                Create a new document entry and upload the PDF file.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSaveDocument} className="space-y-4 py-4">
@@ -154,6 +191,20 @@ export function AdminDocumentManager() {
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" name="description" placeholder="Brief summary of the document content..." className="resize-none" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="file">PDF Document</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="file" 
+                    type="file" 
+                    accept=".pdf" 
+                    onChange={handleFileChange}
+                    className="cursor-pointer"
+                    required
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">Strictly PDF files only.</p>
               </div>
               <DialogFooter>
                 <Button type="submit">Create Record</Button>
@@ -227,7 +278,7 @@ export function AdminDocumentManager() {
                         <Button variant="ghost" size="icon" onClick={() => setEditingDoc(doc)}>
                           <Edit className="h-4 w-4 text-blue-600" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(doc.id)}>
+                        <Button variant="ghost" size="icon" onClick={() => setDeletingDocId(doc.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                         <Button variant="ghost" size="icon" asChild>
@@ -247,7 +298,12 @@ export function AdminDocumentManager() {
 
       {/* Edit Dialog */}
       {editingDoc && (
-        <Dialog open={!!editingDoc} onOpenChange={() => setEditingDoc(null)}>
+        <Dialog open={!!editingDoc} onOpenChange={(open) => {
+          if (!open) {
+            setEditingDoc(null);
+            setSelectedFile(null);
+          }
+        }}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Edit Document Metadata</DialogTitle>
@@ -277,6 +333,17 @@ export function AdminDocumentManager() {
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" name="description" defaultValue={editingDoc.description} className="resize-none" />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="file-edit">Replace Document (PDF)</Label>
+                <Input 
+                  id="file-edit" 
+                  type="file" 
+                  accept=".pdf" 
+                  onChange={handleFileChange}
+                  className="cursor-pointer"
+                />
+                <p className="text-xs text-muted-foreground">Leave blank to keep existing file.</p>
+              </div>
               <DialogFooter>
                 <Button type="submit">Update Record</Button>
               </DialogFooter>
@@ -284,6 +351,25 @@ export function AdminDocumentManager() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingDocId} onOpenChange={(open) => !open && setDeletingDocId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the document record
+              from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Document
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
