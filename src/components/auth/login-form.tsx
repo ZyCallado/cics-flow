@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogIn, ShieldCheck, Mail, Lock, Loader2 } from 'lucide-react';
+import { LogIn, ShieldCheck, Mail, Lock, Loader2, UserPlus } from 'lucide-react';
 import { useAuth } from '@/firebase';
-import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
+import { initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 
 export function LoginForm() {
@@ -16,13 +16,13 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // This will trigger the auth state listener in the parent/provider
-    initiateEmailSignIn(auth, email, password, (error) => {
+    const callback = (error: any) => {
       setIsLoading(false);
       
       let errorMessage = "An unexpected error occurred. Please try again.";
@@ -36,14 +36,24 @@ export function LoginForm() {
         errorMessage = "Incorrect password.";
       } else if (error.code === 'auth/too-many-requests') {
         errorMessage = "Too many failed attempts. Please try again later.";
+      } else if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email is already registered. Try signing in.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password should be at least 6 characters.";
       }
 
       toast({
         variant: "destructive",
-        title: "Authentication Failed",
+        title: isSignUp ? "Sign Up Failed" : "Authentication Failed",
         description: errorMessage,
       });
-    });
+    };
+
+    if (isSignUp) {
+      initiateEmailSignUp(auth, email, password, callback);
+    } else {
+      initiateEmailSignIn(auth, email, password, callback);
+    }
   };
 
   return (
@@ -57,11 +67,11 @@ export function LoginForm() {
         <div className="h-2 bg-gradient-to-r from-primary via-secondary to-primary" />
         <CardHeader className="text-center space-y-1">
           <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-            <ShieldCheck className="text-primary w-6 h-6" />
+            {isSignUp ? <UserPlus className="text-primary w-6 h-6" /> : <ShieldCheck className="text-primary w-6 h-6" />}
           </div>
-          <CardTitle className="font-headline text-2xl">Sign In</CardTitle>
+          <CardTitle className="font-headline text-2xl">{isSignUp ? 'Create Account' : 'Sign In'}</CardTitle>
           <CardDescription>
-            Enter your credentials to access your account.
+            {isSignUp ? 'Join CICS Flow to manage your documents.' : 'Enter your credentials to access your account.'}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
@@ -107,10 +117,23 @@ export function LoginForm() {
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  <LogIn className="mr-2 h-5 w-5" /> Authenticate
+                  {isSignUp ? <UserPlus className="mr-2 h-5 w-5" /> : <LogIn className="mr-2 h-5 w-5" />}
+                  {isSignUp ? 'Register' : 'Authenticate'}
                 </>
               )}
             </Button>
+            
+            <Button 
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isLoading}
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-primary hover:text-primary/80 hover:bg-primary/5"
+            >
+              {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
+            </Button>
+
             <div className="text-xs text-center text-muted-foreground">
               Students should use their <span className="font-semibold text-primary">@neu.edu.ph</span> work email.
             </div>
