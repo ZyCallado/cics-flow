@@ -31,11 +31,11 @@ export default function Home() {
 
   const { data: adminDoc, isLoading: isAdminChecking } = useDoc(adminRef);
 
-  // Fetch some stats for the dashboard
+  // Fetch some stats for the dashboard - Only execute if user is authenticated
   const docsQuery = useMemoFirebase(() => {
-    if (!db) return null;
+    if (!db || !authUser) return null;
     return query(collection(db, 'documents'), limit(10));
-  }, [db]);
+  }, [db, authUser]);
   const { data: recentDocs } = useCollection(docsQuery);
 
   // Derive the application user profile
