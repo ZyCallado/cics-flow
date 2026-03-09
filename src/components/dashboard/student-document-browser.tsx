@@ -16,12 +16,12 @@ import {
   List,
   Calendar,
   Search,
-  Eye,
-  ExternalLink
+  Eye
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { recordDownloadNonBlocking } from '@/firebase/non-blocking-updates';
 
 const CATEGORIES = ['All Resources', 'Lecture Notes', 'Research Papers', 'Exam Prep', 'Reference Materials'];
 const STABLE_PDF_URL = "https://pdfobject.com/pdf/sample.pdf";
@@ -50,11 +50,16 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
     return matchesCategory && matchesSearch;
   }) || [];
 
-  const handleDownload = (e: React.MouseEvent, url: string, name: string) => {
-    // Basic download helper
+  const handleDownload = (docData: AppDocument) => {
+    if (!db) return;
+
+    // Track download and add to "My Downloads"
+    recordDownloadNonBlocking(db, user.uid, docData, user.email);
+
+    // Trigger browser download
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `${name}.pdf`;
+    link.href = docData.storagePath || STABLE_PDF_URL;
+    link.download = `${docData.name}.pdf`;
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     document.body.appendChild(link);
@@ -64,7 +69,6 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
           <h2 className="text-3xl font-bold text-[#0F172A]">Student Dashboard</h2>
@@ -83,7 +87,6 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
         </div>
       </div>
 
-      {/* Categories Tabs */}
       <Tabs defaultValue="All Resources" onValueChange={setSelectedCategory} className="w-full">
         <TabsList className="bg-transparent border-none h-auto p-0 gap-8 overflow-x-auto w-full justify-start no-scrollbar">
           {CATEGORIES.map(cat => (
@@ -98,7 +101,6 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
         </TabsList>
       </Tabs>
 
-      {/* Documents Section Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold text-[#0F172A]">
           {selectedCategory} {searchTerm && `• Results for "${searchTerm}"`}
@@ -123,7 +125,6 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
         </div>
       </div>
 
-      {/* Content Grid */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 text-[#64748B]">
           <Loader2 className="h-10 w-10 animate-spin text-[#F2780D] mb-4" />
@@ -178,7 +179,7 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
                   </div>
                   <Button 
                     className="bg-[#F2780D] hover:bg-[#D96B0B] text-white rounded-xl h-9 px-4 text-xs font-bold shadow-sm shadow-orange-500/20"
-                    onClick={(e) => handleDownload(e, doc.storagePath || STABLE_PDF_URL, doc.name)}
+                    onClick={() => handleDownload(doc)}
                   >
                     <Download className="mr-2 h-3 w-3" />
                     Download
@@ -187,23 +188,9 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
               </CardContent>
             </Card>
           ))}
-          
-          {/* Missing Resource Card placeholder */}
-          {viewMode === 'grid' && (
-            <div className="rounded-2xl border-2 border-dashed border-[#E2E8F0] bg-white/50 flex flex-col items-center justify-center text-center p-8 space-y-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors">
-              <div className="h-12 w-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
-                <FileText className="h-6 w-6 text-[#CBD5E1]" />
-              </div>
-              <div>
-                <p className="font-bold text-[#0F172A] text-sm">Missing a resource?</p>
-                <p className="text-[10px] text-[#94A3B8] mt-1 font-bold uppercase tracking-widest">Request document upload</p>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {/* Help Banner */}
       <div className="bg-[#0F172A] rounded-[2rem] p-8 md:p-12 relative overflow-hidden text-white shadow-2xl">
         <div className="relative z-10 space-y-6 max-w-xl">
           <h3 className="text-3xl font-bold tracking-tight">Need Academic Help?</h3>
@@ -230,7 +217,6 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
         </div>
       </div>
 
-      {/* Footer Branding */}
       <footer className="pt-8 pb-12 flex flex-col md:flex-row items-center justify-between border-t border-[#F1F5F9] gap-4">
         <p className="text-xs font-bold text-[#94A3B8]">© 2023 CICS University Portal. All educational materials are protected.</p>
         <div className="flex gap-6 text-xs font-bold text-[#64748B]">

@@ -5,16 +5,19 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  increment,
   CollectionReference,
   DocumentReference,
   SetOptions,
+  Firestore,
+  doc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
-import {FirestorePermissionError} from '@/firebase/errors';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
  * Initiates a setDoc operation for a document reference.
- * Does NOT await the write operation internally.
  */
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options: SetOptions) {
   setDoc(docRef, data, options).catch(error => {
@@ -22,19 +25,15 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
       'permission-error',
       new FirestorePermissionError({
         path: docRef.path,
-        operation: 'write', // or 'create'/'update' based on options
+        operation: 'write',
         requestResourceData: data,
       })
     )
   })
-  // Execution continues immediately
 }
-
 
 /**
  * Initiates an addDoc operation for a collection reference.
- * Does NOT await the write operation internally.
- * Returns the Promise for the new doc ref, but typically not awaited by caller.
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
   const promise = addDoc(colRef, data)
@@ -51,10 +50,8 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
   return promise;
 }
 
-
 /**
  * Initiates an updateDoc operation for a document reference.
- * Does NOT await the write operation internally.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) {
   updateDoc(docRef, data)
@@ -70,10 +67,8 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
     });
 }
 
-
 /**
  * Initiates a deleteDoc operation for a document reference.
- * Does NOT await the write operation internally.
  */
 export function deleteDocumentNonBlocking(docRef: DocumentReference) {
   deleteDoc(docRef)
@@ -86,4 +81,61 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
         })
       )
     });
+}
+
+/**
+ * Records a document download for a specific user and increments global counts.
+ */
+export function recordDownloadNonBlocking(db: Firestore, userId: string, document: any, userEmail: string) {
+  // 1. Increment global download count
+  const docRef = doc(db, 'documents', document.id);
+  updateDoc(docRef, {
+    downloadCount: increment(1),
+    updatedAt: serverTimestamp()
+  }).catch(() => {});
+
+  // 2. Add to user's personal downloads (idempotent via doc ID)
+  const userDownloadRef = doc(db, 'users', userId, 'downloads', document.id);
+  setDoc(userDownloadRef, {
+    ...document,
+    downloadedAt: new Date().toISOString(),
+    recordedAt: serverTimestamp()
+  }, { merge: true }).catch(() => {});
+
+  // 3. Log activity
+  const logRef = doc(collection(db, 'activityLogs'));
+  setDoc(logRef, {
+    id: logRef.id,
+    userId,
+    email: userEmail,
+    action: 'document_download',
+    timestamp: new Date().toISOString(),
+    ipAddress: 'client-side',
+    status: 'success',
+    details: `Downloaded: ${document.name}`,
+    documentId: document.id
+  }).catch(() => {});
+}
+
+/**
+ * Creates a generic activity log entry.
+ */
+export function createActivityLogNonBlocking(db: Firestore, logData: {
+  userId: string;
+  email: string;
+  action: string;
+  details: string;
+  status?: 'success' | 'failure';
+}) {
+  const logRef = doc(collection(db, 'activityLogs'));
+  setDoc(logRef, {
+    id: logRef.id,
+    userId: logData.userId,
+    email: logData.email,
+    action: logData.action,
+    timestamp: new Date().toISOString(),
+    ipAddress: 'client-side',
+    status: logData.status || 'success',
+    details: logData.details
+  }).catch(() => {});
 }

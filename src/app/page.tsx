@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -9,6 +8,7 @@ import { TopNav } from '@/components/dashboard/top-nav';
 import { AuditLogViewer } from '@/components/dashboard/audit-log-viewer';
 import { AdminDocumentManager } from '@/components/dashboard/admin-document-manager';
 import { StudentDocumentBrowser } from '@/components/dashboard/student-document-browser';
+import { MyDownloadsViewer } from '@/components/dashboard/my-downloads-viewer';
 import { AdminDashboardOverview } from '@/components/dashboard/admin-dashboard-overview';
 import { AdminUserManagement } from '@/components/dashboard/admin-user-management';
 import { User as AppUser, UserRole } from '@/lib/types';
@@ -16,7 +16,7 @@ import { Loader2, Settings, ShieldAlert } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth } from '@/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { setDocumentNonBlocking, createActivityLogNonBlocking } from '@/firebase/non-blocking-updates';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 
@@ -28,6 +28,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const hasSyncedProfile = useRef(false);
+  const hasLoggedSession = useRef(false);
 
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !authUser) return null;
@@ -81,6 +82,7 @@ export default function Home() {
         setShowOnboarding(false);
       }
 
+      // Sync Profile
       if (!hasSyncedProfile.current && !userData.isBlocked) {
         hasSyncedProfile.current = true;
         const syncData: any = {
@@ -95,10 +97,22 @@ export default function Home() {
         if (userData.program) syncData.program = userData.program;
         setDocumentNonBlocking(doc(db, 'users', authUser.uid), syncData, { merge: true });
       }
+
+      // Track Session Log
+      if (!hasLoggedSession.current && !userData.isBlocked) {
+        hasLoggedSession.current = true;
+        createActivityLogNonBlocking(db, {
+          userId: userData.uid,
+          email: userData.email,
+          action: 'user_login',
+          details: `User session active: ${userData.role}`
+        });
+      }
     } else if (!authUser && !isUserLoading) {
       setAppUser(null);
       setShowOnboarding(false);
       hasSyncedProfile.current = false;
+      hasLoggedSession.current = false;
     }
   }, [authUser, adminDoc, profileDoc, isAdminChecking, isProfileLoading, db, isUserLoading, auth, toast]);
 
@@ -109,6 +123,7 @@ export default function Home() {
     setActiveTab('dashboard');
     setShowOnboarding(false);
     hasSyncedProfile.current = false;
+    hasLoggedSession.current = false;
   };
 
   const handleOnboardingComplete = (program: string) => {
@@ -134,7 +149,6 @@ export default function Home() {
     );
   }
 
-  // Handle Blocked Users
   if (appUser.isBlocked) {
     return (
       <main className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-8 text-center space-y-6">
@@ -176,11 +190,12 @@ export default function Home() {
             {activeTab === 'dashboard' && appUser.role === 'student' && <StudentDocumentBrowser user={appUser} />}
             {activeTab === 'dashboard' && appUser.role === 'admin' && <AdminDashboardOverview />}
             
+            {activeTab === 'downloads' && appUser.role === 'student' && <MyDownloadsViewer user={appUser} />}
             {activeTab === 'all-docs' && appUser.role === 'admin' && <AdminDocumentManager />}
             {activeTab === 'users' && appUser.role === 'admin' && <AdminUserManagement />}
             {activeTab === 'audit' && appUser.role === 'admin' && <AuditLogViewer />}
 
-            {(activeTab === 'history' || activeTab === 'settings' || activeTab === 'downloads' || activeTab === 'curriculum' || activeTab === 'grades' || activeTab === 'library' || activeTab === 'support') && (
+            {(activeTab === 'history' || activeTab === 'settings' || activeTab === 'curriculum' || activeTab === 'grades' || activeTab === 'library' || activeTab === 'support') && (
               <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6 animate-in zoom-in-95 duration-500">
                 <div className="h-24 w-24 bg-white rounded-3xl shadow-xl flex items-center justify-center">
                   <Settings className="h-12 w-12 text-[#CBD5E1]" />
