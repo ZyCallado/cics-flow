@@ -54,6 +54,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
 const CATEGORIES = ['Academic', 'Administrative', 'Faculty', 'Research', 'Student Services', 'Other'];
+const STABLE_PDF_URL = "https://pdfobject.com/pdf/sample.pdf";
 
 export function AdminDocumentManager() {
   const { user } = useUser();
@@ -102,10 +103,10 @@ export function AdminDocumentManager() {
 
     const formData = new FormData(e.currentTarget);
     
-    // For this simulation, we use a public sample PDF if a file is "uploaded"
+    // For this simulation, we use a stable public PDF link
     const simulatedPath = selectedFile 
-      ? "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" 
-      : (editingDoc?.storagePath || "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf");
+      ? STABLE_PDF_URL 
+      : (editingDoc?.storagePath || STABLE_PDF_URL);
 
     const docData = {
       name: formData.get('name') as string,
@@ -285,7 +286,11 @@ export function AdminDocumentManager() {
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                         <Button variant="ghost" size="icon" asChild>
-                          <a href={doc.storagePath} target="_blank" rel="noopener noreferrer">
+                          <a 
+                            href={doc.storagePath || STABLE_PDF_URL} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
                             <ExternalLink className="h-4 w-4" />
                           </a>
                         </Button>
