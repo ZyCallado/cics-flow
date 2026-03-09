@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -9,9 +8,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { LogIn, ShieldCheck, Mail, Lock, Loader2 } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { initiateEmailSignIn } from '@/firebase/non-blocking-login';
+import { useToast } from '@/hooks/use-toast';
 
 export function LoginForm() {
   const auth = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,9 +20,30 @@ export function LoginForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
     // This will trigger the auth state listener in the parent/provider
-    initiateEmailSignIn(auth, email, password);
-    // Loading state is handled by the auth state change in the main page
+    initiateEmailSignIn(auth, email, password, (error) => {
+      setIsLoading(false);
+      
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      
+      // Handle specific Firebase Auth error codes
+      if (error.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid email or password. Please verify your credentials.";
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email.";
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password.";
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed attempts. Please try again later.";
+      }
+
+      toast({
+        variant: "destructive",
+        title: "Authentication Failed",
+        description: errorMessage,
+      });
+    });
   };
 
   return (
