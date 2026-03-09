@@ -6,7 +6,7 @@ import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebas
 import { collection, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Document as AppDocument } from '@/lib/types';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,20 +40,18 @@ import {
 } from '@/components/ui/select';
 import { 
   FileText, 
-  Plus, 
   Search, 
-  Edit, 
+  Edit2, 
   Trash2, 
-  ExternalLink, 
   Loader2,
-  FilePlus,
-  Filter,
-  Upload
+  Plus,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
-const CATEGORIES = ['Academic', 'Administrative', 'Faculty', 'Research', 'Student Services', 'Other'];
+const CATEGORIES = ['Finance', 'HR', 'IT', 'Marketing', 'Administrative', 'Academic'];
 const STABLE_PDF_URL = "https://pdfobject.com/pdf/sample.pdf";
 
 export function AdminDocumentManager() {
@@ -67,7 +65,6 @@ export function AdminDocumentManager() {
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Firestore Collection Reference
   const docsQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(collection(db, 'documents'), orderBy('uploadTimestamp', 'desc'));
@@ -77,23 +74,12 @@ export function AdminDocumentManager() {
 
   const filteredDocs = documents?.filter(doc => 
     doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doc.uploaderName.toLowerCase().includes(searchTerm.toLowerCase())
+    doc.category.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (file.type !== 'application/pdf') {
-        toast({
-          variant: "destructive",
-          title: "Invalid File Type",
-          description: "Only PDF documents are allowed."
-        });
-        e.target.value = '';
-        return;
-      }
-      setSelectedFile(file);
+      setSelectedFile(e.target.files[0]);
     }
   };
 
@@ -102,18 +88,12 @@ export function AdminDocumentManager() {
     if (!db || !user) return;
 
     const formData = new FormData(e.currentTarget);
-    
-    // For this simulation, we use a stable public PDF link
-    const simulatedPath = selectedFile 
-      ? STABLE_PDF_URL 
-      : (editingDoc?.storagePath || STABLE_PDF_URL);
-
     const docData = {
       name: formData.get('name') as string,
       category: formData.get('category') as string,
       description: formData.get('description') as string,
       type: 'application/pdf',
-      storagePath: simulatedPath,
+      storagePath: STABLE_PDF_URL,
       uploaderId: user.uid,
       uploaderName: user.displayName || 'Administrator',
       uploadTimestamp: new Date().toISOString(),
@@ -128,8 +108,7 @@ export function AdminDocumentManager() {
         updatedAt: serverTimestamp(),
       });
       setEditingDoc(null);
-      setSelectedFile(null);
-      toast({ title: "Document Updated", description: "Metadata has been saved successfully." });
+      toast({ title: "Document Updated" });
     } else {
       const newDocRef = doc(collection(db, 'documents'));
       setDocumentNonBlocking(newDocRef, {
@@ -138,242 +117,205 @@ export function AdminDocumentManager() {
         createdAt: serverTimestamp(),
       }, { merge: true });
       setIsCreateOpen(false);
-      setSelectedFile(null);
-      toast({ title: "Document Created", description: "New document entry added to system." });
+      toast({ title: "Document Uploaded" });
     }
+    setSelectedFile(null);
   };
 
   const confirmDelete = () => {
     if (!db || !deletingDocId) return;
-    const docRef = doc(db, 'documents', deletingDocId);
-    deleteDocumentNonBlocking(docRef);
+    deleteDocumentNonBlocking(doc(db, 'documents', deletingDocId));
     setDeletingDocId(null);
-    toast({ variant: "destructive", title: "Document Deleted", description: "Record has been removed from system." });
+    toast({ variant: "destructive", title: "Document Deleted" });
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-700 max-w-7xl mx-auto">
+      {/* Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-headline font-bold text-foreground">Manage Documents</h2>
-          <p className="text-muted-foreground">Admin-only workspace for institutional documents.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-[#0F172A]">Documents Management</h1>
+          <p className="text-[#64748B] text-sm mt-1">Manage, upload, and organize corporate PDF assets.</p>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={(open) => {
-          setIsCreateOpen(open);
-          if (!open) setSelectedFile(null);
-        }}>
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90">
-              <FilePlus className="mr-2 h-4 w-4" />
-              Upload New Metadata
+            <Button className="bg-[#F2780D] hover:bg-[#D96B0B] text-white px-6 py-6 rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all hover:scale-[1.02] active:scale-95">
+              <Plus className="mr-2 h-5 w-5" />
+              Upload New Document
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl">
             <DialogHeader>
-              <DialogTitle>Add Document Record</DialogTitle>
-              <DialogDescription>
-                Create a new document entry and upload the PDF file.
-              </DialogDescription>
+              <DialogTitle className="text-2xl font-bold">New Document</DialogTitle>
+              <DialogDescription>Add a new PDF asset to the system registry.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSaveDocument} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Document Title</Label>
-                <Input id="name" name="name" placeholder="e.g., Faculty Handbook 2024" required />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
+                <Input name="name" placeholder="Document Name" required className="h-12 rounded-xl" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</Label>
                 <Select name="category" defaultValue="Administrative">
-                  <SelectTrigger>
+                  <SelectTrigger className="h-12 rounded-xl">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
+                    {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea id="description" name="description" placeholder="Brief summary of the document content..." className="resize-none" />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                <Textarea name="description" placeholder="Brief description..." className="rounded-xl min-h-[100px]" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="file">PDF Document</Label>
-                <Input 
-                  id="file" 
-                  type="file" 
-                  accept=".pdf" 
-                  onChange={handleFileChange}
-                  className="cursor-pointer"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">Strictly PDF files only.</p>
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PDF File</Label>
+                <Input type="file" accept=".pdf" onChange={handleFileChange} required className="h-12 rounded-xl cursor-pointer py-2" />
               </div>
-              <DialogFooter>
-                <Button type="submit">Create Record</Button>
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="w-full h-12 bg-[#F2780D] hover:bg-[#D96B0B] rounded-xl font-bold">Upload Document</Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="flex items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-border">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search by title, category, or uploader..." 
-            className="pl-10"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <Button variant="outline" size="icon">
-          <Filter className="h-4 w-4" />
-        </Button>
+      {/* Search Section */}
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#94A3B8]" />
+        <Input 
+          placeholder="Search documents by title, category, or description..." 
+          className="pl-12 h-14 rounded-2xl bg-white border-none shadow-sm text-lg focus-visible:ring-primary/20"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
       </div>
 
-      <Card className="border-none shadow-md bg-white overflow-hidden">
+      {/* Table Section */}
+      <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
         <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-12 flex flex-col items-center justify-center text-muted-foreground">
-              <Loader2 className="h-8 w-8 animate-spin mb-4" />
-              <p>Loading document registry...</p>
-            </div>
-          ) : filteredDocs.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>No documents found matching your search.</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader className="bg-muted/30">
-                <TableRow>
-                  <TableHead>Document Title</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Uploaded By</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+          <Table>
+            <TableHeader className="bg-[#F8FAFC]">
+              <TableRow className="hover:bg-transparent border-b border-[#F1F5F9]">
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] py-4 pl-6">Title</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Category</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Upload Date</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Description</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] text-right pr-6">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={5} className="h-64 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></TableCell></TableRow>
+              ) : filteredDocs.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="h-64 text-center text-muted-foreground">No documents found.</TableCell></TableRow>
+              ) : filteredDocs.map((doc) => (
+                <TableRow key={doc.id} className="hover:bg-[#F8FAFC] border-b border-[#F1F5F9] transition-colors group">
+                  <TableCell className="py-4 pl-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-10 w-10 flex items-center justify-center rounded-lg border border-[#F1F5F9] text-red-500 group-hover:bg-white transition-colors">
+                        <FileText className="h-5 w-5" />
+                      </div>
+                      <span className="font-bold text-[#0F172A] text-sm">{doc.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="bg-[#FEE2E2]/30 text-[#F87171] hover:bg-[#FEE2E2]/50 rounded-lg px-3 py-1 font-medium border-none text-[10px] uppercase tracking-wide">
+                      {doc.category}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-[#64748B] text-xs">
+                    {new Date(doc.uploadTimestamp).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: '4-digit' })}
+                  </TableCell>
+                  <TableCell className="text-[#64748B] text-xs max-w-[300px] truncate">
+                    {doc.description}
+                  </TableCell>
+                  <TableCell className="text-right pr-6">
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" className="text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-lg" onClick={() => setEditingDoc(doc)}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-[#94A3B8] hover:text-red-500 hover:bg-red-50 rounded-lg" onClick={() => setDeletingDocId(doc.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredDocs.map((doc) => (
-                  <TableRow key={doc.id} className="hover:bg-muted/10 transition-colors">
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded">
-                          <FileText className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm">{doc.name}</p>
-                          <p className="text-xs text-muted-foreground truncate max-w-[200px]">{doc.description}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-accent/50">{doc.category}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm font-medium">{doc.uploaderName}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(doc.uploadTimestamp).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => setEditingDoc(doc)}>
-                          <Edit className="h-4 w-4 text-blue-600" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => setDeletingDocId(doc.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                        <Button variant="ghost" size="icon" asChild>
-                          <a 
-                            href={doc.storagePath || STABLE_PDF_URL} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+              ))}
+            </TableBody>
+          </Table>
+          
+          {/* Pagination Placeholder */}
+          <div className="flex items-center justify-between px-6 py-6 border-t border-[#F1F5F9] bg-[#F8FAFC]/50">
+            <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider">
+              Showing {filteredDocs.length > 0 ? 1 : 0} to {filteredDocs.length} of {filteredDocs.length} documents
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-[#94A3B8] hover:bg-[#F1F5F9] rounded-lg disabled:opacity-30" disabled>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button className="h-8 w-8 bg-[#F2780D] text-white rounded-lg text-xs font-bold shadow-sm">1</Button>
+              <Button variant="ghost" className="h-8 w-8 text-[#94A3B8] hover:bg-[#F1F5F9] rounded-lg text-xs font-bold">2</Button>
+              <Button variant="ghost" className="h-8 w-8 text-[#94A3B8] hover:bg-[#F1F5F9] rounded-lg text-xs font-bold">3</Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-[#94A3B8] hover:bg-[#F1F5F9] rounded-lg disabled:opacity-30" disabled>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
       {/* Edit Dialog */}
       {editingDoc && (
-        <Dialog open={!!editingDoc} onOpenChange={(open) => {
-          if (!open) {
-            setEditingDoc(null);
-            setSelectedFile(null);
-          }
-        }}>
-          <DialogContent className="sm:max-w-[500px]">
+        <Dialog open={!!editingDoc} onOpenChange={(open) => !open && setEditingDoc(null)}>
+          <DialogContent className="sm:max-w-[500px] rounded-2xl shadow-2xl">
             <DialogHeader>
-              <DialogTitle>Edit Document Metadata</DialogTitle>
-              <DialogDescription>
-                Update the metadata for {editingDoc.name}.
-              </DialogDescription>
+              <DialogTitle className="text-2xl font-bold">Edit Metadata</DialogTitle>
+              <DialogDescription>Update the details for {editingDoc.name}</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSaveDocument} className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Document Title</Label>
-                <Input id="name" name="name" defaultValue={editingDoc.name} required />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
+                <Input name="name" defaultValue={editingDoc.name} required className="h-12 rounded-xl" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</Label>
                 <Select name="category" defaultValue={editingDoc.category}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Category" />
+                  <SelectTrigger className="h-12 rounded-xl">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
+                    {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea id="description" name="description" defaultValue={editingDoc.description} className="resize-none" />
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                <Textarea name="description" defaultValue={editingDoc.description} className="rounded-xl min-h-[100px]" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="file-edit">Replace Document (PDF)</Label>
-                <Input 
-                  id="file-edit" 
-                  type="file" 
-                  accept=".pdf" 
-                  onChange={handleFileChange}
-                  className="cursor-pointer"
-                />
-                <p className="text-xs text-muted-foreground">Leave blank to keep existing file.</p>
-              </div>
-              <DialogFooter>
-                <Button type="submit">Update Record</Button>
+              <DialogFooter className="pt-4">
+                <Button type="submit" className="w-full h-12 bg-[#F2780D] hover:bg-[#D96B0B] rounded-xl font-bold">Save Changes</Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Alert */}
       <AlertDialog open={!!deletingDocId} onOpenChange={(open) => !open && setDeletingDocId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl shadow-2xl border-none">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the document record
-              from the system.
+            <AlertDialogTitle className="text-xl font-bold">Confirm Deletion</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm">
+              Are you sure you want to remove this document from the registry? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete Document
+          <AlertDialogFooter className="pt-2">
+            <AlertDialogCancel className="rounded-xl border-none bg-muted font-bold h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="rounded-xl bg-red-500 hover:bg-red-600 font-bold h-11 text-white">
+              Delete Forever
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

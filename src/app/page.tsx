@@ -27,24 +27,20 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const hasSyncedProfile = useRef(false);
 
-  // Fetch application user profile
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !authUser) return null;
     return doc(db, 'users', authUser.uid);
   }, [db, authUser]);
   const { data: profileDoc, isLoading: isProfileLoading } = useDoc(userProfileRef);
 
-  // Check if user is an admin
   const adminRef = useMemoFirebase(() => {
     if (!db || !authUser) return null;
     return doc(db, 'roles_admin', authUser.uid);
   }, [db, authUser]);
   const { data: adminDoc, isLoading: isAdminChecking } = useDoc(adminRef);
 
-  // Fetch some stats for the dashboard
   const docsQuery = useMemoFirebase(() => {
     if (!db || !authUser) return null;
-    // Simple query to avoid index complexity for now
     return query(collection(db, 'documents'), limit(5));
   }, [db, authUser]);
   const { data: recentDocs } = useCollection(docsQuery);
@@ -67,14 +63,12 @@ export default function Home() {
       
       setAppUser(userData);
 
-      // Trigger onboarding ONLY for students without a program
       if (role === 'student' && !profileDoc?.program) {
         setShowOnboarding(true);
       } else {
         setShowOnboarding(false);
       }
 
-      // Sync last login and user info - only once per session or profile change to avoid loop
       if (!hasSyncedProfile.current) {
         hasSyncedProfile.current = true;
         const syncData: any = {
@@ -116,7 +110,7 @@ export default function Home() {
 
   if (isUserLoading || (authUser && (isAdminChecking || isProfileLoading))) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <Loader2 className="h-12 w-12 text-primary animate-spin" />
       </div>
     );
@@ -124,18 +118,14 @@ export default function Home() {
 
   if (!appUser) {
     return (
-      <main className="min-h-screen bg-background flex items-center justify-center p-4">
-        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-secondary rounded-full blur-3xl animate-pulse delay-700" />
-        </div>
+      <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
         <LoginForm />
       </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row font-body">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col md:flex-row font-body">
       {showOnboarding && <OnboardingFlow userId={appUser.uid} onComplete={handleOnboardingComplete} />}
       
       <aside className="hidden md:block w-72 shrink-0 h-screen sticky top-0 overflow-y-auto z-40">
@@ -147,146 +137,115 @@ export default function Home() {
         />
       </aside>
 
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
+      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
+        <div className="max-w-7xl mx-auto">
           {activeTab === 'dashboard' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-right-4 duration-500">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-right-8 duration-700">
+              <div className="lg:col-span-2 space-y-8">
                 <div>
-                  <h1 className="text-4xl font-headline font-bold mb-2">Welcome, {appUser.name.split(' ')[0]}</h1>
-                  <p className="text-muted-foreground">
+                  <h1 className="text-4xl font-bold tracking-tight text-[#0F172A]">Welcome back, {appUser.name.split(' ')[0]}!</h1>
+                  <p className="text-[#64748B] text-lg mt-2">
                     {appUser.role === 'admin' 
-                      ? "Administrative Control Center" 
+                      ? "Here's what's happening with the document registry today." 
                       : `Access your ${appUser.program || 'student'} resources.`
                     }
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Card className="border-none shadow-sm bg-white hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center mb-2">
-                        <FileText className="text-primary w-5 h-5" />
-                      </div>
-                      <CardTitle className="text-sm font-medium">Resources</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-headline font-bold">{recentDocs?.length || 0}</div>
-                      <p className="text-xs text-muted-foreground">Available docs</p>
-                    </CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6">
+                    <div className="h-12 w-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4">
+                      <FileText className="text-[#F2780D] w-6 h-6" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Total Resources</p>
+                    <div className="text-3xl font-bold text-[#0F172A] mt-1">{recentDocs?.length || 0}</div>
                   </Card>
-                  <Card className="border-none shadow-sm bg-white hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="h-10 w-10 bg-secondary/10 rounded-lg flex items-center justify-center mb-2">
-                        <Clock className="text-secondary w-5 h-5" />
-                      </div>
-                      <CardTitle className="text-sm font-medium">Account Type</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-xl font-headline font-bold truncate">
-                        {appUser.role.toUpperCase()}
-                      </div>
-                      <p className="text-xs text-muted-foreground">Status active</p>
-                    </CardContent>
+                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6">
+                    <div className="h-12 w-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4">
+                      <ShieldCheck className="text-blue-600 w-6 h-6" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Account Status</p>
+                    <div className="text-2xl font-bold text-[#0F172A] mt-1">{appUser.role.toUpperCase()}</div>
                   </Card>
-                  <Card className="border-none shadow-sm bg-white hover:shadow-md transition-shadow">
-                    <CardHeader className="pb-2">
-                      <div className="h-10 w-10 bg-orange-100 rounded-lg flex items-center justify-center mb-2">
-                        <GraduationCap className="text-orange-600 w-5 h-5" />
-                      </div>
-                      <CardTitle className="text-sm font-medium">Program</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 truncate max-w-full block text-center">
-                        {appUser.role === 'student' ? (appUser.program?.split(' ').pop() || 'CICS') : 'Staff'}
-                      </Badge>
-                      <p className="text-xs text-muted-foreground mt-2 text-center">Portal connected</p>
-                    </CardContent>
+                  <Card className="border-none shadow-sm bg-white rounded-2xl p-6">
+                    <div className="h-12 w-12 bg-green-100 rounded-xl flex items-center justify-center mb-4">
+                      <Clock className="text-green-600 w-6 h-6" />
+                    </div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Session Date</p>
+                    <div className="text-2xl font-bold text-[#0F172A] mt-1">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
                   </Card>
                 </div>
 
-                <Card className="border-none shadow-md bg-white overflow-hidden">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="font-headline">Recently Added Documents</CardTitle>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab(appUser.role === 'admin' ? 'all-docs' : 'documents')}>
-                      View All
+                <Card className="border-none shadow-sm bg-white rounded-2xl overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between px-8 py-6 border-b border-[#F1F5F9]">
+                    <CardTitle className="text-xl font-bold text-[#0F172A]">Recently Modified</CardTitle>
+                    <Button variant="ghost" className="text-primary font-bold hover:bg-orange-50" onClick={() => setActiveTab(appUser.role === 'admin' ? 'all-docs' : 'documents')}>
+                      See all documents
                     </Button>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-0">
                     {recentDocs && recentDocs.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="divide-y divide-[#F1F5F9]">
                         {recentDocs.map((doc: any) => (
-                          <div key={doc.id} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors">
-                            <div className="flex items-center gap-3">
-                              <div className="p-2 bg-primary/10 rounded">
-                                <FileText className="h-4 w-4 text-primary" />
+                          <div key={doc.id} className="flex items-center justify-between px-8 py-4 hover:bg-[#F8FAFC] transition-colors">
+                            <div className="flex items-center gap-4">
+                              <div className="p-2.5 bg-red-50 text-red-500 rounded-lg">
+                                <FileText className="h-5 w-5" />
                               </div>
                               <div>
-                                <p className="text-sm font-bold">{doc.name}</p>
-                                <p className="text-xs text-muted-foreground">{doc.category}</p>
+                                <p className="text-sm font-bold text-[#0F172A]">{doc.name}</p>
+                                <p className="text-xs text-[#64748B]">{doc.category}</p>
                               </div>
                             </div>
-                            <Button variant="ghost" size="icon" asChild>
+                            <Button variant="ghost" size="icon" className="text-[#94A3B8] hover:text-primary rounded-lg" asChild>
                               <a href={doc.storagePath} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-4 w-4" />
+                                <ExternalLink className="h-5 w-5" />
                               </a>
                             </Button>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4 italic">No documents available yet.</p>
+                      <p className="text-sm text-[#64748B] text-center py-12 italic">No recent activity found.</p>
                     )}
                   </CardContent>
                 </Card>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
                 <UserProfileSummary user={appUser} />
-                <Card className="bg-primary text-white border-none shadow-xl overflow-hidden relative group cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => setActiveTab(appUser.role === 'admin' ? 'audit' : 'documents')}>
-                  <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
-                    {appUser.role === 'admin' ? <ShieldCheck size={120} /> : <Search size={120} />}
+                <Card className="bg-[#0F172A] text-white border-none shadow-xl rounded-2xl p-8 relative overflow-hidden group">
+                  <div className="absolute -right-8 -bottom-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+                    <ShieldCheck size={160} />
                   </div>
-                  <CardHeader>
-                    <CardTitle className="font-headline flex items-center gap-2">
-                      {appUser.role === 'admin' ? "Security Status" : "Quick Search"}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-white/80">
-                      {appUser.role === 'admin' 
-                        ? "Audit logs and system access reports are ready for analysis." 
-                        : "Looking for specific forms or handbooks? Browse our digital library."
-                      }
+                  <div className="relative z-10 space-y-4">
+                    <Badge className="bg-primary hover:bg-primary border-none text-white px-3 py-1 rounded-lg">System Status</Badge>
+                    <h3 className="text-2xl font-bold leading-tight">Security & Audit logs are live</h3>
+                    <p className="text-[#94A3B8] text-sm leading-relaxed">
+                      All document transactions and administrative access attempts are recorded for institutional security monitoring.
                     </p>
-                    <div className="mt-4 flex items-center text-xs font-bold uppercase tracking-wider">
-                      {appUser.role === 'admin' ? "Audit Dashboard →" : "Browse Library →"}
-                    </div>
-                  </CardContent>
+                    <Button variant="link" className="p-0 text-primary font-bold hover:text-primary/80 no-underline group-hover:underline" onClick={() => setActiveTab('audit')}>
+                      Open Audit Dashboard →
+                    </Button>
+                  </div>
                 </Card>
               </div>
             </div>
           )}
 
-          {activeTab === 'audit' && appUser.role === 'admin' && (
-            <AuditLogViewer />
-          )}
+          {activeTab === 'audit' && appUser.role === 'admin' && <AuditLogViewer />}
+          {activeTab === 'all-docs' && appUser.role === 'admin' && <AdminDocumentManager />}
+          {activeTab === 'documents' && <StudentDocumentBrowser />}
 
-          {activeTab === 'all-docs' && appUser.role === 'admin' && (
-            <AdminDocumentManager />
-          )}
-
-          {activeTab === 'documents' && (
-            <StudentDocumentBrowser />
-          )}
-
-          {(activeTab === 'upload' || activeTab === 'history' || activeTab === 'settings') && (
-            <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4 animate-in fade-in zoom-in-95 duration-500">
-              <div className="p-6 bg-white rounded-full shadow-lg">
-                <FileText className="h-16 w-16 text-muted-foreground/30" />
+          {(activeTab === 'users' || activeTab === 'history' || activeTab === 'settings') && (
+            <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-6 animate-in zoom-in-95 duration-500">
+              <div className="h-24 w-24 bg-white rounded-3xl shadow-xl flex items-center justify-center">
+                <Settings className="h-12 w-12 text-[#CBD5E1]" />
               </div>
-              <h2 className="text-2xl font-headline font-bold">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('-', ' ')} Module</h2>
-              <p className="text-muted-foreground max-w-sm">This feature is part of the next development sprint. Our team is currently building this workspace.</p>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-[#0F172A]">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Module</h2>
+                <p className="text-[#64748B] max-w-sm">This module is currently undergoing system maintenance. Check back later.</p>
+              </div>
             </div>
           )}
         </div>
