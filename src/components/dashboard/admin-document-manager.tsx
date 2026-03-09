@@ -26,7 +26,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -227,7 +226,7 @@ export function AdminDocumentManager() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-[#64748B] text-xs">
-                    {new Date(doc.uploadTimestamp).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: '4-digit' })}
+                    {new Date(doc.uploadTimestamp).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
                   </TableCell>
                   <TableCell className="text-[#64748B] text-xs max-w-[300px] truncate">
                     {doc.description}
