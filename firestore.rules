@@ -8,13 +8,6 @@ service cloud.firestore {
      * This ruleset enforces a strict user-ownership model while providing a dedicated pathway for 
      * administrators. By utilizing a specific collection for administrator IDs, we ensure 
      * high-performance authorization checks without the overhead of deep document nesting.
-     *
-     * DATA STRUCTURE
-     * - /users/{userId}: Private user profiles.
-     * - /users/{userId}/downloads/{downloadId}: Personal document library for students.
-     * - /roles_admin/{adminId}: A lookup collection to verify administrative privileges.
-     * - /documents/{documentId}: Shared or private document metadata.
-     * - /activityLogs/{activityLogId}: Audit trail for system actions.
      */
 
     // --- Helper Functions ---
@@ -53,10 +46,13 @@ service cloud.firestore {
     }
 
     match /documents/{documentId} {
-      allow get: if isSignedIn() && (resource.data.uploaderId == request.auth.uid || (request.auth.uid in resource.data.permissions) || isAdmin());
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.uploaderId == request.auth.uid;
-      allow update: if resource != null && (resource.data.uploaderId == request.auth.uid || isAdmin());
+      allow update: if resource != null && (
+        resource.data.uploaderId == request.auth.uid || 
+        isAdmin() || 
+        (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['downloadCount', 'updatedAt']))
+      );
       allow delete: if resource != null && (resource.data.uploaderId == request.auth.uid || isAdmin());
     }
 

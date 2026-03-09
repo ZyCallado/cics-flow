@@ -45,15 +45,13 @@ import {
   Trash2, 
   Loader2,
   Plus,
-  ChevronLeft,
-  ChevronRight,
   AlertCircle,
   Download
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
-const CATEGORIES = ['Finance', 'HR', 'IT', 'Marketing', 'Administrative', 'Academic'];
+const CATEGORIES = ['Lecture Notes', 'Research Papers', 'Exam Prep', 'Reference Materials', 'Administrative'];
 const STABLE_PDF_URL = "https://pdfobject.com/pdf/sample.pdf";
 
 function formatBytes(bytes: number, decimals = 2) {
@@ -188,7 +186,7 @@ export function AdminDocumentManager() {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</Label>
-                <Select name="category" defaultValue="Administrative">
+                <Select name="category" defaultValue="Lecture Notes">
                   <SelectTrigger className="h-12 rounded-xl">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
@@ -232,7 +230,7 @@ export function AdminDocumentManager() {
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#94A3B8]" />
         <Input 
-          placeholder="Search documents by title, category, or description..." 
+          placeholder="Search documents by title or category..." 
           className="pl-12 h-14 rounded-2xl bg-white border-none shadow-sm text-lg focus-visible:ring-primary/20"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}

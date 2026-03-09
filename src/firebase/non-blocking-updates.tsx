@@ -1,3 +1,4 @@
+
 'use client';
     
 import {
@@ -93,7 +94,13 @@ export function recordDownloadNonBlocking(db: Firestore, userId: string, documen
   updateDoc(docRef, {
     downloadCount: increment(1),
     updatedAt: serverTimestamp()
-  }).catch(() => {});
+  }).catch((serverError) => {
+    errorEmitter.emit('permission-error', new FirestorePermissionError({
+      path: docRef.path,
+      operation: 'update',
+      requestResourceData: { downloadCount: 'increment' }
+    }));
+  });
 
   // 2. Add to user's personal downloads (idempotent via doc ID)
   const userDownloadRef = doc(db, 'users', userId, 'downloads', document.id);
@@ -101,7 +108,13 @@ export function recordDownloadNonBlocking(db: Firestore, userId: string, documen
     ...document,
     downloadedAt: new Date().toISOString(),
     recordedAt: serverTimestamp()
-  }, { merge: true }).catch(() => {});
+  }, { merge: true }).catch((serverError) => {
+    errorEmitter.emit('permission-error', new FirestorePermissionError({
+      path: userDownloadRef.path,
+      operation: 'write',
+      requestResourceData: { ...document, downloadedAt: '...' }
+    }));
+  });
 
   // 3. Log activity
   const logRef = doc(collection(db, 'activityLogs'));

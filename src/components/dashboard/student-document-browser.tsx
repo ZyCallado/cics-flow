@@ -24,7 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { recordDownloadNonBlocking } from '@/firebase/non-blocking-updates';
 
-const CATEGORIES = ['All Resources', 'Lecture Notes', 'Research Papers', 'Exam Prep', 'Reference Materials'];
+const CATEGORIES = ['All Resources', 'Lecture Notes', 'Research Papers', 'Exam Prep', 'Reference Materials', 'Administrative'];
 const STABLE_PDF_URL = "https://pdfobject.com/pdf/sample.pdf";
 
 interface StudentDocumentBrowserProps {
@@ -155,7 +155,7 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <Badge variant="secondary" className="bg-[#F8FAFC] text-[#64748B] border-none text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">
-                      PDF • {doc.formattedSize || '4.2 MB'}
+                      PDF • {doc.formattedSize || 'N/A'}
                     </Badge>
                     <a 
                       href={doc.storagePath || STABLE_PDF_URL} 
