@@ -46,7 +46,8 @@ import {
   Loader2,
   Plus,
   AlertCircle,
-  Download
+  Download,
+  Eye
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -283,10 +284,15 @@ export function AdminDocumentManager() {
                   </TableCell>
                   <TableCell className="text-right pr-6">
                     <div className="flex justify-end gap-1">
-                      <Button variant="ghost" size="icon" className="text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-lg" onClick={() => setEditingDoc(doc)}>
+                      <Button variant="ghost" size="icon" className="text-[#94A3B8] hover:text-primary hover:bg-orange-50 rounded-lg" asChild title="View Document">
+                        <a href={doc.storagePath || STABLE_PDF_URL} target="_blank" rel="noopener noreferrer">
+                          <Eye className="h-4 w-4" />
+                        </a>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-[#94A3B8] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-lg" onClick={() => setEditingDoc(doc)} title="Edit Metadata">
                         <Edit2 className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="text-[#94A3B8] hover:text-red-500 hover:bg-red-50 rounded-lg" onClick={() => setDeletingDocId(doc.id)}>
+                      <Button variant="ghost" size="icon" className="text-[#94A3B8] hover:text-red-500 hover:bg-red-50 rounded-lg" onClick={() => setDeletingDocId(doc.id)} title="Delete Document">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
