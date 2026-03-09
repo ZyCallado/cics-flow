@@ -10,7 +10,7 @@ import { User as AppUser, UserRole } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock, TrendingUp, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { FileText, Clock, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth } from '@/firebase';
 import { doc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -61,16 +61,6 @@ export default function Home() {
   const handleLogout = async () => {
     await signOut(auth);
     setActiveTab('dashboard');
-  };
-
-  const handleMakeAdmin = () => {
-    if (!authUser || !db) return;
-    const adminDocRef = doc(db, 'roles_admin', authUser.uid);
-    setDocumentNonBlocking(adminDocRef, {
-      uid: authUser.uid,
-      email: authUser.email,
-      createdAt: new Date().toISOString()
-    }, { merge: true });
   };
 
   if (isUserLoading || (authUser && isAdminChecking)) {
@@ -209,21 +199,6 @@ export default function Home() {
             </div>
           )}
         </div>
-
-        {/* Prototyping Utility: Promote to Admin */}
-        {authUser && appUser.role !== 'admin' && (
-          <div className="fixed bottom-6 right-6 z-50 animate-bounce">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="bg-white shadow-xl border-primary/20 hover:border-primary transition-colors"
-              onClick={handleMakeAdmin}
-            >
-              <ShieldCheck className="mr-2 h-4 w-4 text-primary" />
-              Promote to Admin (Dev Mode)
-            </Button>
-          </div>
-        )}
       </main>
     </div>
   );
