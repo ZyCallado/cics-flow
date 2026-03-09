@@ -5,14 +5,15 @@ import { useState, useEffect } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { AuditLogViewer } from '@/components/dashboard/audit-log-viewer';
+import { AdminDocumentManager } from '@/components/dashboard/admin-document-manager';
 import { UserProfileSummary } from '@/components/dashboard/user-profile-summary';
 import { User as AppUser, UserRole } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FileText, Clock, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
-import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth } from '@/firebase';
-import { doc, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, useCollection } from '@/firebase';
+import { doc, serverTimestamp, collection, query, limit } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
@@ -29,6 +30,13 @@ export default function Home() {
   }, [db, authUser]);
 
   const { data: adminDoc, isLoading: isAdminChecking } = useDoc(adminRef);
+
+  // Fetch some stats for the dashboard
+  const docsQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(collection(db, 'documents'), limit(10));
+  }, [db]);
+  const { data: recentDocs } = useCollection(docsQuery);
 
   // Derive the application user profile
   const [appUser, setAppUser] = useState<AppUser | null>(null);
@@ -115,8 +123,8 @@ export default function Home() {
                       <CardTitle className="text-sm font-medium">Documents</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-headline font-bold">12</div>
-                      <p className="text-xs text-muted-foreground">+2 since last week</p>
+                      <div className="text-2xl font-headline font-bold">{recentDocs?.length || 0}</div>
+                      <p className="text-xs text-muted-foreground">System total</p>
                     </CardContent>
                   </Card>
                   <Card className="border-none shadow-sm bg-white hover:shadow-md transition-shadow">
@@ -128,7 +136,7 @@ export default function Home() {
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-headline font-bold">24h</div>
-                      <p className="text-xs text-muted-foreground">Uptime monitoring active</p>
+                      <p className="text-xs text-muted-foreground">Monitoring active</p>
                     </CardContent>
                   </Card>
                   <Card className="border-none shadow-sm bg-white hover:shadow-md transition-shadow">
@@ -140,21 +148,21 @@ export default function Home() {
                     </CardHeader>
                     <CardContent>
                       <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">Optimal</Badge>
-                      <p className="text-xs text-muted-foreground mt-2">Systems functioning normally</p>
+                      <p className="text-xs text-muted-foreground mt-2">Systems online</p>
                     </CardContent>
                   </Card>
                 </div>
 
                 <Card className="border-none shadow-md bg-white">
                   <CardHeader>
-                    <CardTitle className="font-headline">Recent System Announcements</CardTitle>
+                    <CardTitle className="font-headline">System Announcements</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex gap-4 p-4 rounded-lg bg-accent/50 border border-border">
                       <AlertCircle className="h-5 w-5 text-primary shrink-0" />
                       <div>
-                        <h4 className="text-sm font-bold">Security Update</h4>
-                        <p className="text-sm text-muted-foreground">We've enhanced our Google OAuth filters. Only @neu.edu.ph accounts can authenticate.</p>
+                        <h4 className="text-sm font-bold">Document Management Live</h4>
+                        <p className="text-sm text-muted-foreground">Admins can now manage metadata for all institution documents via the Manage Documents tab.</p>
                       </div>
                     </div>
                   </CardContent>
@@ -174,7 +182,7 @@ export default function Home() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-white/80">3 new unusual login patterns detected. Run AI analysis for details.</p>
+                      <p className="text-sm text-white/80">Security logs are ready for analysis. Check for any unusual activities.</p>
                       <div className="mt-4 flex items-center text-xs font-bold uppercase tracking-wider">
                         Explore Audit Logs &rarr;
                       </div>
@@ -189,12 +197,16 @@ export default function Home() {
             <AuditLogViewer />
           )}
 
-          {activeTab !== 'dashboard' && activeTab !== 'audit' && (
+          {activeTab === 'all-docs' && appUser.role === 'admin' && (
+            <AdminDocumentManager />
+          )}
+
+          {activeTab !== 'dashboard' && activeTab !== 'audit' && activeTab !== 'all-docs' && (
             <div className="flex flex-col items-center justify-center h-[60vh] text-center space-y-4 animate-in fade-in zoom-in-95 duration-500">
               <div className="p-6 bg-white rounded-full shadow-lg">
                 <FileText className="h-16 w-16 text-muted-foreground/30" />
               </div>
-              <h2 className="text-2xl font-headline font-bold">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Module</h2>
+              <h2 className="text-2xl font-headline font-bold">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1).replace('-', ' ')} Module</h2>
               <p className="text-muted-foreground max-w-sm">This feature is part of the next development sprint. Our team is currently building this workspace.</p>
             </div>
           )}

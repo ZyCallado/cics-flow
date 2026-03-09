@@ -13,12 +13,16 @@ export interface User {
 export interface Document {
   id: string;
   name: string;
+  category: string;
+  description: string;
   type: string;
+  storagePath: string;
   uploaderId: string;
   uploaderName: string;
-  timestamp: string;
-  permissions: 'public' | 'private' | 'faculty-only';
-  status: 'pending' | 'approved' | 'rejected';
+  uploadTimestamp: string;
+  permissions: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuditLog {
