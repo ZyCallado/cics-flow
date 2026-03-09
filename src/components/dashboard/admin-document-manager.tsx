@@ -45,7 +45,8 @@ import {
   Loader2,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -63,6 +64,7 @@ export function AdminDocumentManager() {
   const [editingDoc, setEditingDoc] = useState<AppDocument | null>(null);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const docsQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -77,14 +79,35 @@ export function AdminDocumentManager() {
   ) || [];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast({
+          variant: "destructive",
+          title: "Invalid File Format",
+          description: "Only PDF documents are authorized for upload. Access to other formats is restricted.",
+        });
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        setSelectedFile(null);
+        return;
+      }
+      setSelectedFile(file);
     }
   };
 
   const handleSaveDocument = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!db || !user) return;
+
+    // Extra validation before saving
+    if (!editingDoc && (!selectedFile || selectedFile.type !== 'application/pdf')) {
+      toast({
+        variant: "destructive",
+        title: "Validation Error",
+        description: "A valid PDF file is required to register a new document.",
+      });
+      return;
+    }
 
     const formData = new FormData(e.currentTarget);
     const docData = {
@@ -94,7 +117,7 @@ export function AdminDocumentManager() {
       type: 'application/pdf',
       storagePath: STABLE_PDF_URL,
       uploaderId: user.uid,
-      uploaderName: user.displayName || 'Administrator',
+      uploaderName: user.email?.split('@')[0] || 'Administrator',
       uploadTimestamp: new Date().toISOString(),
       permissions: ['admin'],
       updatedAt: new Date().toISOString(),
@@ -121,13 +144,6 @@ export function AdminDocumentManager() {
     setSelectedFile(null);
   };
 
-  const confirmDelete = () => {
-    if (!db || !deletingDocId) return;
-    deleteDocumentNonBlocking(doc(db, 'documents', deletingDocId));
-    setDeletingDocId(null);
-    toast({ variant: "destructive", title: "Document Deleted" });
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-700 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -136,7 +152,10 @@ export function AdminDocumentManager() {
           <p className="text-[#64748B] text-sm mt-1">Manage, upload, and organize corporate PDF assets.</p>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={(open) => {
+          setIsCreateOpen(open);
+          if (!open) setSelectedFile(null);
+        }}>
           <DialogTrigger asChild>
             <Button className="bg-[#F2780D] hover:bg-[#D96B0B] text-white px-6 py-6 rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all hover:scale-[1.02] active:scale-95">
               <Plus className="mr-2 h-5 w-5" />
@@ -170,7 +189,20 @@ export function AdminDocumentManager() {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PDF File</Label>
-                <Input type="file" accept=".pdf" onChange={handleFileChange} required className="h-12 rounded-xl cursor-pointer py-2" />
+                <div className="relative">
+                  <Input 
+                    ref={fileInputRef}
+                    type="file" 
+                    accept="application/pdf" 
+                    onChange={handleFileChange} 
+                    required 
+                    className="h-12 rounded-xl cursor-pointer py-2 pr-10" 
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                    <AlertCircle className="h-4 w-4" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground font-medium italic">Requirement: Only .pdf files are accepted.</p>
               </div>
               <DialogFooter className="pt-4">
                 <Button type="submit" className="w-full h-12 bg-[#F2780D] hover:bg-[#D96B0B] rounded-xl font-bold">Upload Document</Button>
@@ -307,7 +339,12 @@ export function AdminDocumentManager() {
           </AlertDialogHeader>
           <AlertDialogFooter className="pt-2">
             <AlertDialogCancel className="rounded-xl border-none bg-muted font-bold h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="rounded-xl bg-red-500 hover:bg-red-600 font-bold h-11 text-white">
+            <AlertDialogAction onClick={() => {
+              if (!db || !deletingDocId) return;
+              deleteDocumentNonBlocking(doc(db, 'documents', deletingDocId));
+              setDeletingDocId(null);
+              toast({ variant: "destructive", title: "Document Deleted" });
+            }} className="rounded-xl bg-red-500 hover:bg-red-600 font-bold h-11 text-white">
               Delete Forever
             </AlertDialogAction>
           </AlertDialogFooter>
