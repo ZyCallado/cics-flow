@@ -26,6 +26,7 @@ export interface Document {
   createdAt: string;
   updatedAt: string;
   downloadCount?: number;
+  formattedSize?: string;
 }
 
 export interface AuditLog {

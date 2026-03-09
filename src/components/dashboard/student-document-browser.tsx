@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -154,7 +155,7 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <Badge variant="secondary" className="bg-[#F8FAFC] text-[#64748B] border-none text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">
-                      PDF • 4.2 MB
+                      PDF • {doc.formattedSize || '4.2 MB'}
                     </Badge>
                     <a 
                       href={doc.storagePath || STABLE_PDF_URL} 
@@ -169,7 +170,10 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
                 
                 <div className="space-y-1">
                   <h4 className="font-bold text-[#0F172A] leading-tight group-hover:text-[#F2780D] transition-colors line-clamp-2 min-h-[2.5rem]">{doc.name}</h4>
-                  <p className="text-xs font-semibold text-[#94A3B8] truncate">{doc.category}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-[#94A3B8] truncate">{doc.category}</p>
+                    <p className="text-[10px] text-primary font-bold">{(doc.downloadCount || 0).toLocaleString()} DLs</p>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-[#F1F5F9]">

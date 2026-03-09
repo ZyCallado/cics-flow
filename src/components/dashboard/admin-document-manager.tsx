@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef } from 'react';
@@ -46,13 +47,23 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  Download
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 
 const CATEGORIES = ['Finance', 'HR', 'IT', 'Marketing', 'Administrative', 'Academic'];
 const STABLE_PDF_URL = "https://pdfobject.com/pdf/sample.pdf";
+
+function formatBytes(bytes: number, decimals = 2) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const dm = decimals < 0 ? 0 : decimals;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+}
 
 export function AdminDocumentManager() {
   const { user } = useUser();
@@ -85,7 +96,7 @@ export function AdminDocumentManager() {
         toast({
           variant: "destructive",
           title: "Invalid File Format",
-          description: "Only PDF documents are authorized for upload. Access to other formats is restricted.",
+          description: "Only PDF documents are authorized for upload.",
         });
         if (fileInputRef.current) fileInputRef.current.value = '';
         setSelectedFile(null);
@@ -99,17 +110,18 @@ export function AdminDocumentManager() {
     e.preventDefault();
     if (!db || !user) return;
 
-    // Extra validation before saving
-    if (!editingDoc && (!selectedFile || selectedFile.type !== 'application/pdf')) {
+    if (!editingDoc && !selectedFile) {
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: "A valid PDF file is required to register a new document.",
+        description: "A PDF file is required to upload a new document.",
       });
       return;
     }
 
     const formData = new FormData(e.currentTarget);
+    const formattedSize = selectedFile ? formatBytes(selectedFile.size) : (editingDoc?.formattedSize || 'N/A');
+    
     const docData = {
       name: formData.get('name') as string,
       category: formData.get('category') as string,
@@ -121,6 +133,7 @@ export function AdminDocumentManager() {
       uploadTimestamp: new Date().toISOString(),
       permissions: ['admin'],
       updatedAt: new Date().toISOString(),
+      formattedSize: formattedSize,
     };
 
     if (editingDoc) {
@@ -136,6 +149,7 @@ export function AdminDocumentManager() {
       setDocumentNonBlocking(newDocRef, {
         ...docData,
         id: newDocRef.id,
+        downloadCount: 0,
         createdAt: serverTimestamp(),
       }, { merge: true });
       setIsCreateOpen(false);
@@ -202,6 +216,9 @@ export function AdminDocumentManager() {
                     <AlertCircle className="h-4 w-4" />
                   </div>
                 </div>
+                {selectedFile && (
+                  <p className="text-[10px] text-primary font-bold">Size Detected: {formatBytes(selectedFile.size)}</p>
+                )}
                 <p className="text-[10px] text-muted-foreground font-medium italic">Requirement: Only .pdf files are accepted.</p>
               </div>
               <DialogFooter className="pt-4">
@@ -229,8 +246,8 @@ export function AdminDocumentManager() {
               <TableRow className="hover:bg-transparent border-b border-[#F1F5F9]">
                 <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] py-4 pl-6">Title</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Category</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Upload Date</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Description</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Size</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">Downloads</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] text-right pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -246,7 +263,10 @@ export function AdminDocumentManager() {
                       <div className="h-10 w-10 flex items-center justify-center rounded-lg border border-[#F1F5F9] text-red-500 group-hover:bg-white transition-colors">
                         <FileText className="h-5 w-5" />
                       </div>
-                      <span className="font-bold text-[#0F172A] text-sm">{doc.name}</span>
+                      <div>
+                        <p className="font-bold text-[#0F172A] text-sm">{doc.name}</p>
+                        <p className="text-[10px] text-[#94A3B8]">{new Date(doc.uploadTimestamp).toLocaleDateString()}</p>
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -254,11 +274,14 @@ export function AdminDocumentManager() {
                       {doc.category}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-[#64748B] text-xs">
-                    {new Date(doc.uploadTimestamp).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })}
+                  <TableCell className="text-[#64748B] text-xs font-bold">
+                    {doc.formattedSize || 'N/A'}
                   </TableCell>
-                  <TableCell className="text-[#64748B] text-xs max-w-[300px] truncate">
-                    {doc.description}
+                  <TableCell className="text-[#64748B] text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <Download className="h-3 w-3 text-primary" />
+                      {(doc.downloadCount || 0).toLocaleString()}
+                    </div>
                   </TableCell>
                   <TableCell className="text-right pr-6">
                     <div className="flex justify-end gap-1">
@@ -274,23 +297,6 @@ export function AdminDocumentManager() {
               ))}
             </TableBody>
           </Table>
-          
-          <div className="flex items-center justify-between px-6 py-6 border-t border-[#F1F5F9] bg-[#F8FAFC]/50">
-            <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-wider">
-              Showing {filteredDocs.length > 0 ? 1 : 0} to {filteredDocs.length} of {filteredDocs.length} documents
-            </p>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-[#94A3B8] hover:bg-[#F1F5F9] rounded-lg disabled:opacity-30" disabled>
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button className="h-8 w-8 bg-[#F2780D] text-white rounded-lg text-xs font-bold shadow-sm">1</Button>
-              <Button variant="ghost" className="h-8 w-8 text-[#94A3B8] hover:bg-[#F1F5F9] rounded-lg text-xs font-bold">2</Button>
-              <Button variant="ghost" className="h-8 w-8 text-[#94A3B8] hover:bg-[#F1F5F9] rounded-lg text-xs font-bold">3</Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-[#94A3B8] hover:bg-[#F1F5F9] rounded-lg disabled:opacity-30" disabled>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
