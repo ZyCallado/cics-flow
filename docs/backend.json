@@ -1,0 +1,254 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the CICS Flow application, including both students and administrators. Stores essential profile information and role.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for login and identification. Students are strictly restricted to the @neu.edu.ph domain.",
+          "format": "email"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name or full name, typically retrieved from their Google profile for students or manually set for administrators."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the application, determining their access permissions.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "googleId": {
+          "type": "string",
+          "description": "The unique identifier provided by Google for users authenticated via Google OAuth. This field is optional for administrator accounts that might use credential-based login."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account was first created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when the user account information was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "displayName",
+        "role",
+        "createdAt"
+      ]
+    },
+    "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Document",
+      "type": "object",
+      "description": "Represents the metadata for a document managed within the CICS Flow application. The actual document files are stored externally (e.g., Firebase Storage).",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Document entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The human-readable name or title of the document."
+        },
+        "type": {
+          "type": "string",
+          "description": "The file type or MIME type of the document (e.g., 'application/pdf', 'image/jpeg', 'docx')."
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "The URI or path to the actual document file in the external cloud storage system (e.g., Firebase Storage URL).",
+          "format": "uri"
+        },
+        "uploaderId": {
+          "type": "string",
+          "description": "Reference to the User who uploaded this document. (Relationship: User 1:N Document)"
+        },
+        "uploadTimestamp": {
+          "type": "string",
+          "description": "Timestamp indicating when the document was uploaded.",
+          "format": "date-time"
+        },
+        "permissions": {
+          "type": "array",
+          "description": "An array of strings defining access permissions or groups (e.g., 'public', 'admin_only', 'department_cs') that can view, edit, or download this document.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "description": "An array of tags or keywords associated with the document for categorization and searchability.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp indicating when this document metadata record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp indicating when this document metadata record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "storagePath",
+        "uploaderId",
+        "uploadTimestamp",
+        "createdAt"
+      ]
+    },
+    "ActivityLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ActivityLog",
+      "type": "object",
+      "description": "Records significant user actions and system events for auditing, security monitoring, and AI-driven insights.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ActivityLog entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who performed the activity. (Relationship: User 1:N ActivityLog)"
+        },
+        "action": {
+          "type": "string",
+          "description": "The specific action performed (e.g., 'login', 'logout', 'document_upload', 'document_view', 'admin_login_attempt_fail').",
+          "items": {
+            "type": "string"
+          }
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp indicating when the activity occurred.",
+          "format": "date-time"
+        },
+        "ipAddress": {
+          "type": "string",
+          "description": "The IP address from which the activity originated."
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "The user agent string of the client application or browser that performed the action."
+        },
+        "details": {
+          "type": "string",
+          "description": "Additional descriptive details about the activity (e.g., error messages, document name involved). For instance: 'Login failed due to invalid credentials'."
+        },
+        "status": {
+          "type": "string",
+          "description": "The outcome of the action (e.g., 'success' or 'failure').",
+          "items": {
+            "type": "string"
+          }
+        },
+        "documentId": {
+          "type": "string",
+          "description": "Optional reference to a Document if the activity is related to a specific document (e.g., document_view, document_upload). (Relationship: Document 1:N ActivityLog)"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "action",
+        "timestamp",
+        "ipAddress",
+        "status"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles, including essential details and their assigned role. The `userId` in the path corresponds to the Firebase Authentication UID. Includes the 'role' field for internal application logic and client-side UI, but primary role-based authorization for rules relies on the separate '/roles_admin/{adminId}' collection. Read/write access is generally restricted to the user themselves, or administrators.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique Firebase Authentication UID of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{adminId}",
+        "definition": {
+          "entityName": "roles_admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A collection used exclusively for highly efficient, independent administrator role verification in security rules. The existence of a document at this path signifies that the `adminId` (which must match a user's UID) is an administrator. This collection is crucial for Authorization Independence and DBAC, enabling quick `exists()` checks for admin status without hierarchical dependencies.",
+          "params": [
+            {
+              "name": "adminId",
+              "description": "The unique Firebase Authentication UID of an administrator."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Stores metadata for all documents in the system. Includes denormalized 'uploaderId' for ownership, and a 'permissions' array for collaborative access control, ensuring Authorization Independence without relying on parent document lookups. Permissions can include user IDs or specific role identifiers (e.g., 'admin').",
+          "params": [
+            {
+              "name": "documentId",
+              "description": "The unique identifier for the document metadata entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/activityLogs/{activityLogId}",
+        "definition": {
+          "entityName": "ActivityLog",
+          "schema": {
+            "$ref": "#/backend/entities/ActivityLog"
+          },
+          "description": "Records all significant user actions and system events. Each log entry includes the 'userId' of the actor, denormalized for direct authorization checks and QAPs. Access is restricted to the owning user for their own logs, or full access for administrators for auditing and AI insights.",
+          "params": [
+            {
+              "name": "activityLogId",
+              "description": "The unique identifier for the activity log entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The proposed Firestore structure prioritizes secure, scalable, and debuggable access control by strictly adhering to the core design principles. The primary strategy employed is **Authorization Independence via Denormalization** (Mandate A), which means all authorization-relevant fields are embedded directly within the document they protect, eliminating the need for `get()` calls to parent documents in security rules. This enables atomic operations and simplifies rule logic considerably. \n\n1.  **User Data (`/users/{userId}`):** User profiles are stored at `/users/{userId}`. Ownership is directly tied to the path (`request.auth.uid == userId`), making it clear and secure for users to manage their own profiles. The user's `role` is stored within the `User` document. For admin role checks, a separate `/roles_admin/{adminId}` collection is used as per **DBAC (No Custom Claims)** and **Access Modeling C.5 (Existence over Content)**. This avoids complex `get()` operations on user profiles just to check a role.\n\n2.  **Admin Roles (`/roles_admin/{adminId}`):** This collection exists solely to efficiently and independently verify if a `request.auth.uid` corresponds to an administrator. A simple `exists(/roles_admin/$(request.auth.uid))` check in security rules provides an atomic, debuggable, and performant way to enforce administrator privileges across the application. This adheres to **Authorization Independence** by providing a global, independent source of truth for roles, and **DBAC** by storing roles in the database rather than relying on custom claims.\n\n3.  **Document Data (`/documents/{documentId}`):** Documents are stored in a top-level collection (`/documents/{documentId}`) to support shared and collaborative access, which aligns with the 'Document Management App' context. To ensure **Authorization Independence**, each `Document` document contains its `uploaderId` and a `permissions` array. \n    *   `uploaderId`: This field is denormalized within each document, making ownership checks (`request.auth.uid == resource.data.uploaderId`) direct and efficient, without needing to `get()` a parent user document. \n    *   `permissions`: This array is also embedded, allowing for checks like `request.auth.uid in resource.data.permissions`. If the `permissions` array includes specific role names (e.g., 'admin'), the rules can perform an `exists()` check against `/roles_admin/{request.auth.uid}`. This combination ensures all authorization context is immediately available within the document or via independent global lookups.\n    *   **QAPs (Rules are not Filters):** This structure supports secure `list` operations. For instance, a user querying for their own documents would use a query like `collection('documents').where('uploaderId', '==', request.auth.uid)`. The security rules would then enforce that any `list` operation must include the `uploaderId` filter for non-admin users, or a filter related to `permissions` (e.g., `where('permissions', 'array-contains', request.auth.uid)`). Administrators, identified by the `/roles_admin` collection, would have permission to list all documents without additional filters.\n\n4.  **Activity Logs (`/activityLogs/{activityLogId}`):** Activity logs are stored in a top-level collection. Each log entry includes the `userId` of the actor. This design allows for: \n    *   **Authorization Independence:** The `userId` is embedded in the log document, allowing direct ownership checks (`request.auth.uid == resource.data.userId`).\n    *   **QAPs:** Regular users can only `list` or `read` their own logs by providing `userId == request.auth.uid` in their queries. Administrators (verified via `/roles_admin`) have full read and list access to all activity logs for auditing and AI insights. This segregation of access simplifies rules for different user types and prevents filtering in rules."
+  }
+}
