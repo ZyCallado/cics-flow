@@ -13,7 +13,7 @@ import { User as AppUser, UserRole } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock, TrendingUp, AlertCircle, Loader2, Search } from 'lucide-react';
+import { FileText, Clock, TrendingUp, AlertCircle, Loader2, Search, ExternalLink, ShieldCheck } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth, useCollection } from '@/firebase';
 import { doc, serverTimestamp, collection, query, limit } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
@@ -60,7 +60,7 @@ export default function Home() {
         role: role,
         lastLogin: new Date().toISOString(),
         photoURL: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
-        program: profileDoc?.program || undefined
+        ...(profileDoc?.program ? { program: profileDoc.program } : {})
       };
       setAppUser(userData);
 
@@ -70,10 +70,19 @@ export default function Home() {
       }
 
       // Sync last login
-      setDocumentNonBlocking(doc(db, 'users', authUser.uid), {
-        ...userData,
+      // We explicitly exclude 'program' if it's undefined to avoid Firestore errors
+      const syncData: any = {
+        uid: userData.uid,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        lastLogin: userData.lastLogin,
+        photoURL: userData.photoURL,
         updatedAt: serverTimestamp(),
-      }, { merge: true });
+      };
+      if (userData.program) syncData.program = userData.program;
+
+      setDocumentNonBlocking(doc(db, 'users', authUser.uid), syncData, { merge: true });
 
     } else if (!authUser && !isUserLoading) {
       setAppUser(null);
@@ -81,7 +90,9 @@ export default function Home() {
   }, [authUser, adminDoc, profileDoc, isAdminChecking, isProfileLoading, db, isUserLoading]);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    if (auth) {
+      await signOut(auth);
+    }
     setActiveTab('dashboard');
     setShowOnboarding(false);
   };
