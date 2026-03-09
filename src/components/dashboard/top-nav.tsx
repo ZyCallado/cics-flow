@@ -36,9 +36,6 @@ export function TopNav({ user }: TopNavProps) {
         <div className="flex items-center gap-3 ml-2">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-bold text-[#0F172A] leading-none">{user.name}</p>
-            <p className="text-[10px] font-bold text-[#94A3B8] mt-1 uppercase tracking-wider">
-              ID: {user.uid.slice(0, 8).toUpperCase()}
-            </p>
           </div>
           <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
             <AvatarImage src={user.photoURL} />

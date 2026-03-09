@@ -6,12 +6,10 @@ import { Button } from '@/components/ui/button';
 import { 
   Home,
   DownloadCloud,
-  BookOpen,
   GraduationCap,
   Library,
   LifeBuoy,
   LogOut,
-  ChevronRight,
   LayoutDashboard,
   FileText,
   Users,
@@ -31,8 +29,6 @@ export function SidebarNav({ role, activeTab, setActiveTab, onLogout, userName }
   const studentItems = [
     { id: 'dashboard', label: 'Home', icon: Home },
     { id: 'downloads', label: 'My Downloads', icon: DownloadCloud },
-    { id: 'curriculum', label: 'Curriculum', icon: BookOpen },
-    { id: 'grades', label: 'Grades', icon: GraduationCap },
   ];
 
   const adminItems = [
