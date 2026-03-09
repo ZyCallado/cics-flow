@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogIn, ShieldCheck, Mail, Lock, Loader2, UserPlus } from 'lucide-react';
+import { LogIn, ShieldCheck, Mail, Lock, Loader2, UserPlus, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/firebase';
 import { initiateEmailSignIn, initiateEmailSignUp } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
@@ -20,8 +20,19 @@ export function LoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
+    // Strict domain validation
+    if (!email.toLowerCase().endsWith('@neu.edu.ph')) {
+      toast({
+        variant: "destructive",
+        title: "Access Restricted",
+        description: "Registration and login are strictly restricted to @neu.edu.ph email addresses.",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    
     const callback = (error: any) => {
       setIsLoading(false);
       
@@ -106,6 +117,11 @@ export function LoginForm() {
                 className="focus:ring-primary/20"
               />
             </div>
+
+            <div className="flex gap-2 p-3 rounded-md bg-amber-50 border border-amber-100 text-amber-800 text-xs">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              <p>Restriction Active: Only <strong>@neu.edu.ph</strong> accounts are authorized for access.</p>
+            </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button 
@@ -133,10 +149,6 @@ export function LoginForm() {
             >
               {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Create one"}
             </Button>
-
-            <div className="text-xs text-center text-muted-foreground">
-              Students should use their <span className="font-semibold text-primary">@neu.edu.ph</span> work email.
-            </div>
           </CardFooter>
         </form>
       </Card>
