@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -20,6 +19,7 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { cn } from '@/lib/utils';
 
 const CATEGORIES = ['All Resources', 'Lecture Notes', 'Research Papers', 'Exam Prep', 'Reference Materials'];
 const STABLE_PDF_URL = "https://pdfobject.com/pdf/sample.pdf";
