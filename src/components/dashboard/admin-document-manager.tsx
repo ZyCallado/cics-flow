@@ -59,7 +59,6 @@ export function AdminDocumentManager() {
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -102,12 +101,18 @@ export function AdminDocumentManager() {
     if (!db || !user) return;
 
     const formData = new FormData(e.currentTarget);
+    
+    // For this simulation, we use a public sample PDF if a file is "uploaded"
+    const simulatedPath = selectedFile 
+      ? "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" 
+      : (editingDoc?.storagePath || "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf");
+
     const docData = {
       name: formData.get('name') as string,
       category: formData.get('category') as string,
       description: formData.get('description') as string,
       type: 'application/pdf',
-      storagePath: selectedFile ? `https://neu.edu.ph/docs/simulated/${selectedFile.name}` : (editingDoc?.storagePath || `https://neu.edu.ph/docs/${Date.now()}.pdf`),
+      storagePath: simulatedPath,
       uploaderId: user.uid,
       uploaderName: user.displayName || 'Administrator',
       uploadTimestamp: new Date().toISOString(),
@@ -194,16 +199,14 @@ export function AdminDocumentManager() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="file">PDF Document</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="file" 
-                    type="file" 
-                    accept=".pdf" 
-                    onChange={handleFileChange}
-                    className="cursor-pointer"
-                    required
-                  />
-                </div>
+                <Input 
+                  id="file" 
+                  type="file" 
+                  accept=".pdf" 
+                  onChange={handleFileChange}
+                  className="cursor-pointer"
+                  required
+                />
                 <p className="text-xs text-muted-foreground">Strictly PDF files only.</p>
               </div>
               <DialogFooter>
