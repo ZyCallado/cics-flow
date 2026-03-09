@@ -5,7 +5,7 @@ import { User } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Shield, Calendar } from 'lucide-react';
+import { Mail, Shield, Calendar, GraduationCap } from 'lucide-react';
 
 interface UserProfileSummaryProps {
   user: User;
@@ -26,23 +26,36 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
           
           <div className="text-center">
             <h3 className="text-xl font-headline font-bold text-foreground">{user.name}</h3>
-            <Badge variant={user.role === 'admin' ? 'secondary' : 'default'} className="mt-1">
-              {user.role.toUpperCase()}
-            </Badge>
+            <div className="flex flex-col items-center gap-1 mt-1">
+              <Badge variant={user.role === 'admin' ? 'secondary' : 'default'}>
+                {user.role.toUpperCase()}
+              </Badge>
+              {user.program && (
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">
+                  {user.program.split('(')[1]?.replace(')', '') || user.program}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="w-full space-y-4 mt-4 text-sm text-muted-foreground pt-4 border-t border-muted">
             <div className="flex items-center gap-3">
               <Mail className="h-4 w-4 text-primary" />
-              <span>{user.email}</span>
+              <span className="truncate max-w-[180px]">{user.email}</span>
             </div>
+            {user.role === 'student' && user.program && (
+              <div className="flex items-center gap-3">
+                <GraduationCap className="h-4 w-4 text-primary" />
+                <span className="text-xs">{user.program}</span>
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <Shield className="h-4 w-4 text-primary" />
-              <span>Restricted Access Enabled</span>
+              <span>Verified Institution Account</span>
             </div>
             <div className="flex items-center gap-3">
               <Calendar className="h-4 w-4 text-primary" />
-              <span>Last Login: {new Date(user.lastLogin).toLocaleDateString()}</span>
+              <span>Last Sync: {new Date(user.lastLogin).toLocaleDateString()}</span>
             </div>
           </div>
         </div>

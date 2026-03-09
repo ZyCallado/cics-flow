@@ -8,6 +8,7 @@ export interface User {
   role: UserRole;
   photoURL?: string;
   lastLogin: string;
+  program?: string; // Added for student onboarding
 }
 
 export interface Document {
