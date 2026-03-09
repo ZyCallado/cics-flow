@@ -64,12 +64,12 @@ export function OnboardingFlow({ userId, onComplete }: OnboardingFlowProps) {
           </div>
           <CardTitle className="text-3xl font-headline font-bold">Welcome to CICS Portal!</CardTitle>
           <CardDescription className="text-base">
-            To provide you with the most relevant documents, please select your program.
+            To provide you with the most relevant documents, please select your undergraduate program.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-3">
-            <Label htmlFor="program" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Your Program</Label>
+            <Label htmlFor="program" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Degree Program</Label>
             <Select onValueChange={setSelectedProgram} value={selectedProgram}>
               <SelectTrigger id="program" className="h-12">
                 <SelectValue placeholder="Select your degree program" />
@@ -85,7 +85,7 @@ export function OnboardingFlow({ userId, onComplete }: OnboardingFlowProps) {
           <div className="p-3 bg-accent/50 rounded-lg flex items-start gap-3">
             <Sparkles className="h-4 w-4 text-primary mt-0.5" />
             <p className="text-xs text-muted-foreground">
-              You can change this preference later in your account settings.
+              This one-time setup helps us customize your student workspace. You can change this later in settings.
             </p>
           </div>
         </CardContent>
@@ -95,7 +95,7 @@ export function OnboardingFlow({ userId, onComplete }: OnboardingFlowProps) {
             disabled={!selectedProgram || isSubmitting}
             onClick={handleSave}
           >
-            {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Complete Setup"}
+            {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Complete Student Setup"}
           </Button>
           <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
             Authorized @neu.edu.ph Student Access

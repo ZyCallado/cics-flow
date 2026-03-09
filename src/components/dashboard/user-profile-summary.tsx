@@ -52,7 +52,7 @@ export function UserProfileSummary({ user }: UserProfileSummaryProps) {
             </div>
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-primary" />
-              <span>Joined: {new Date(user.lastLogin).toLocaleDateString()}</span>
+              <span>Session: {new Date().toLocaleDateString()}</span>
             </div>
           </div>
         </div>

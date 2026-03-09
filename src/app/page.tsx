@@ -44,6 +44,7 @@ export default function Home() {
   // Fetch some stats for the dashboard
   const docsQuery = useMemoFirebase(() => {
     if (!db || !authUser) return null;
+    // Simple query to avoid index complexity for now
     return query(collection(db, 'documents'), limit(5));
   }, [db, authUser]);
   const { data: recentDocs } = useCollection(docsQuery);
@@ -66,9 +67,11 @@ export default function Home() {
       
       setAppUser(userData);
 
-      // Trigger onboarding for students without a program
+      // Trigger onboarding ONLY for students without a program
       if (role === 'student' && !profileDoc?.program) {
         setShowOnboarding(true);
+      } else {
+        setShowOnboarding(false);
       }
 
       // Sync last login and user info - only once per session or profile change to avoid loop
@@ -90,6 +93,7 @@ export default function Home() {
 
     } else if (!authUser && !isUserLoading) {
       setAppUser(null);
+      setShowOnboarding(false);
       hasSyncedProfile.current = false;
     }
   }, [authUser, adminDoc, profileDoc, isAdminChecking, isProfileLoading, db, isUserLoading]);
