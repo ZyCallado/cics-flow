@@ -7,15 +7,17 @@ import { Document as AppDocument, User } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { 
   FileText, 
   Download, 
   Loader2,
   LayoutGrid,
   List,
-  Sparkles,
-  BookOpen,
-  Calendar
+  Calendar,
+  Search,
+  Eye,
+  ExternalLink
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,6 +34,7 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
   const db = useFirestore();
   const [selectedCategory, setSelectedCategory] = useState('All Resources');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const docsQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -41,28 +44,53 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
   const { data: documents, isLoading } = useCollection<AppDocument>(docsQuery);
 
   const filteredDocs = documents?.filter(doc => {
-    if (selectedCategory === 'All Resources') return true;
-    return doc.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'All Resources' || doc.category === selectedCategory;
+    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         doc.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
   }) || [];
+
+  const handleDownload = (e: React.MouseEvent, url: string, name: string) => {
+    // Basic download helper
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${name}.pdf`;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header Section */}
-      <div className="space-y-1">
-        <h2 className="text-3xl font-bold text-[#0F172A]">Student Dashboard</h2>
-        <p className="text-[#64748B]">
-          Welcome back, {user.name.split('.')[0]}. You have {filteredDocs.length} resources available in {user.program || 'your program'}.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-bold text-[#0F172A]">Student Dashboard</h2>
+          <p className="text-[#64748B]">
+            Welcome back, <span className="text-[#0F172A] font-semibold">{user.name}</span>. Explore resources for <span className="text-primary font-semibold">{user.program || 'your program'}</span>.
+          </p>
+        </div>
+        <div className="relative w-full md:w-80">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
+          <Input 
+            placeholder="Search by title or topic..." 
+            className="pl-10 h-11 bg-white border-[#E2E8F0] rounded-xl focus-visible:ring-primary/20 shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Categories Tabs */}
       <Tabs defaultValue="All Resources" onValueChange={setSelectedCategory} className="w-full">
-        <TabsList className="bg-transparent border-none h-auto p-0 gap-8">
+        <TabsList className="bg-transparent border-none h-auto p-0 gap-8 overflow-x-auto w-full justify-start no-scrollbar">
           {CATEGORIES.map(cat => (
             <TabsTrigger 
               key={cat} 
               value={cat}
-              className="px-0 py-2 border-b-2 border-transparent data-[state=active]:border-[#F2780D] data-[state=active]:text-[#F2780D] data-[state=active]:shadow-none rounded-none text-[#64748B] font-semibold transition-all h-auto"
+              className="px-0 py-2 border-b-2 border-transparent data-[state=active]:border-[#F2780D] data-[state=active]:text-[#F2780D] data-[state=active]:shadow-none rounded-none text-[#64748B] font-semibold transition-all h-auto whitespace-nowrap"
             >
               {cat}
             </TabsTrigger>
@@ -72,7 +100,9 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
 
       {/* Documents Section Header */}
       <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold text-[#0F172A]">Recent Documents</h3>
+        <h3 className="text-xl font-bold text-[#0F172A]">
+          {selectedCategory} {searchTerm && `• Results for "${searchTerm}"`}
+        </h3>
         <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-[#F1F5F9]">
           <Button 
             variant="ghost" 
@@ -100,19 +130,20 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
           <p className="font-semibold">Syncing library...</p>
         </div>
       ) : filteredDocs.length === 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="aspect-[4/5] rounded-2xl border-2 border-dashed border-[#E2E8F0] bg-white/50 flex flex-col items-center justify-center text-center p-8 space-y-4">
-            <div className="h-16 w-16 bg-white rounded-2xl shadow-sm flex items-center justify-center">
-              <FileText className="h-8 w-8 text-[#CBD5E1]" />
-            </div>
-            <div>
-              <p className="font-bold text-[#0F172A]">Missing a resource?</p>
-              <p className="text-xs text-[#94A3B8] mt-1">Request document upload from faculty.</p>
-            </div>
+        <div className="flex flex-col items-center justify-center py-20 bg-white/50 rounded-3xl border-2 border-dashed border-[#E2E8F0] space-y-4">
+          <div className="h-16 w-16 bg-white rounded-2xl shadow-sm flex items-center justify-center">
+            <FileText className="h-8 w-8 text-[#CBD5E1]" />
+          </div>
+          <div className="text-center">
+            <p className="font-bold text-[#0F172A]">No resources found</p>
+            <p className="text-xs text-[#94A3B8] mt-1">Try adjusting your filters or search keywords.</p>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className={cn(
+          "grid gap-6",
+          viewMode === 'grid' ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1"
+        )}>
           {filteredDocs.map((doc) => (
             <Card key={doc.id} className="border-none shadow-sm hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden bg-white group">
               <CardContent className="p-6 space-y-4">
@@ -120,14 +151,24 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
                   <div className="h-14 w-14 bg-orange-50 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                     <FileText className="h-7 w-7 text-[#F2780D]" />
                   </div>
-                  <Badge variant="secondary" className="bg-[#F8FAFC] text-[#64748B] border-none text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">
-                    PDF • 4.2 MB
-                  </Badge>
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge variant="secondary" className="bg-[#F8FAFC] text-[#64748B] border-none text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">
+                      PDF • 4.2 MB
+                    </Badge>
+                    <a 
+                      href={doc.storagePath || STABLE_PDF_URL} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-[10px] flex items-center gap-1 text-[#F2780D] font-bold hover:underline"
+                    >
+                      <Eye className="h-3 w-3" /> Preview
+                    </a>
+                  </div>
                 </div>
                 
                 <div className="space-y-1">
-                  <h4 className="font-bold text-[#0F172A] leading-tight group-hover:text-[#F2780D] transition-colors">{doc.name}</h4>
-                  <p className="text-xs font-semibold text-[#94A3B8]">{user.program?.split('in ')[1] || 'General'} • {doc.category}</p>
+                  <h4 className="font-bold text-[#0F172A] leading-tight group-hover:text-[#F2780D] transition-colors line-clamp-2 min-h-[2.5rem]">{doc.name}</h4>
+                  <p className="text-xs font-semibold text-[#94A3B8] truncate">{doc.category}</p>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-[#F1F5F9]">
@@ -135,26 +176,30 @@ export function StudentDocumentBrowser({ user }: StudentDocumentBrowserProps) {
                     <Calendar className="h-3 w-3" />
                     {new Date(doc.uploadTimestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </div>
-                  <Button className="bg-[#F2780D] hover:bg-[#D96B0B] text-white rounded-xl h-9 px-4 text-xs font-bold shadow-sm shadow-orange-500/20" asChild>
-                    <a href={doc.storagePath || STABLE_PDF_URL} download={`${doc.name}.pdf`}>
-                      <Download className="mr-2 h-3 w-3" />
-                      Download
-                    </a>
+                  <Button 
+                    className="bg-[#F2780D] hover:bg-[#D96B0B] text-white rounded-xl h-9 px-4 text-xs font-bold shadow-sm shadow-orange-500/20"
+                    onClick={(e) => handleDownload(e, doc.storagePath || STABLE_PDF_URL, doc.name)}
+                  >
+                    <Download className="mr-2 h-3 w-3" />
+                    Download
                   </Button>
                 </div>
               </CardContent>
             </Card>
           ))}
+          
           {/* Missing Resource Card placeholder */}
-          <div className="rounded-2xl border-2 border-dashed border-[#E2E8F0] bg-white/50 flex flex-col items-center justify-center text-center p-8 space-y-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors">
-            <div className="h-12 w-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
-              <FileText className="h-6 w-6 text-[#CBD5E1]" />
+          {viewMode === 'grid' && (
+            <div className="rounded-2xl border-2 border-dashed border-[#E2E8F0] bg-white/50 flex flex-col items-center justify-center text-center p-8 space-y-4 cursor-pointer hover:bg-[#F8FAFC] transition-colors">
+              <div className="h-12 w-12 bg-white rounded-xl shadow-sm flex items-center justify-center">
+                <FileText className="h-6 w-6 text-[#CBD5E1]" />
+              </div>
+              <div>
+                <p className="font-bold text-[#0F172A] text-sm">Missing a resource?</p>
+                <p className="text-[10px] text-[#94A3B8] mt-1 font-bold uppercase tracking-widest">Request document upload</p>
+              </div>
             </div>
-            <div>
-              <p className="font-bold text-[#0F172A] text-sm">Missing a resource?</p>
-              <p className="text-[10px] text-[#94A3B8] mt-1 font-bold uppercase tracking-widest">Request document upload</p>
-            </div>
-          </div>
+          )}
         </div>
       )}
 
