@@ -6,46 +6,68 @@ import { LoginForm } from '@/components/auth/login-form';
 import { SidebarNav } from '@/components/dashboard/sidebar-nav';
 import { AuditLogViewer } from '@/components/dashboard/audit-log-viewer';
 import { UserProfileSummary } from '@/components/dashboard/user-profile-summary';
-import { User, UserRole } from '@/lib/types';
+import { User as AppUser, UserRole } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Clock, TrendingUp, AlertCircle } from 'lucide-react';
+import { FileText, Clock, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 
 export default function Home() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user: authUser, isUserLoading } = useUser();
+  const { auth } = useAuth();
+  const db = useFirestore();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isMounted, setIsMounted] = useState(false);
+
+  // Check if user is an admin by looking at the roles_admin collection
+  const adminRef = useMemoFirebase(() => {
+    if (!db || !authUser) return null;
+    return doc(db, 'roles_admin', authUser.uid);
+  }, [db, authUser]);
+
+  const { data: adminDoc, isLoading: isAdminChecking } = useDoc(adminRef);
+
+  // Derive the application user profile
+  const [appUser, setAppUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
+    if (authUser && !isAdminChecking) {
+      const role: UserRole = adminDoc ? 'admin' : 'student';
+      setAppUser({
+        uid: authUser.uid,
+        email: authUser.email || '',
+        name: authUser.displayName || (role === 'admin' ? 'Administrator' : 'Student'),
+        role: role,
+        lastLogin: new Date().toISOString(),
+        photoURL: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`
+      });
+    } else if (!authUser) {
+      setAppUser(null);
+    }
+  }, [authUser, adminDoc, isAdminChecking]);
 
-  const handleLogin = (role: UserRole, email: string) => {
-    setUser({
-      uid: Math.random().toString(36).substr(2, 9),
-      email: email,
-      name: role === 'admin' ? 'CICS Administrator' : 'NEU Student Account',
-      role: role,
-      lastLogin: new Date().toISOString(),
-      photoURL: role === 'student' ? 'https://picsum.photos/seed/stu/200/200' : 'https://picsum.photos/seed/adm/200/200'
-    });
-  };
-
-  const handleLogout = () => {
-    setUser(null);
+  const handleLogout = async () => {
+    await signOut(auth);
     setActiveTab('dashboard');
   };
 
-  if (!isMounted) return null;
+  if (isUserLoading || (authUser && isAdminChecking)) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-12 w-12 text-primary animate-spin" />
+      </div>
+    );
+  }
 
-  if (!user) {
+  if (!appUser) {
     return (
       <main className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none overflow-hidden">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-primary rounded-full blur-3xl animate-pulse" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-secondary rounded-full blur-3xl animate-pulse delay-700" />
         </div>
-        <LoginForm onLogin={handleLogin} />
+        <LoginForm />
       </main>
     );
   }
@@ -55,7 +77,7 @@ export default function Home() {
       {/* Sidebar for Desktop */}
       <aside className="hidden md:block w-72 shrink-0 h-screen sticky top-0 overflow-y-auto z-40">
         <SidebarNav 
-          role={user.role} 
+          role={appUser.role} 
           activeTab={activeTab} 
           setActiveTab={setActiveTab} 
           onLogout={handleLogout} 
@@ -69,7 +91,7 @@ export default function Home() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="lg:col-span-2 space-y-6">
                 <div>
-                  <h1 className="text-4xl font-headline font-bold mb-2">Welcome back, {user.name.split(' ')[0]}</h1>
+                  <h1 className="text-4xl font-headline font-bold mb-2">Welcome back, {appUser.name.split(' ')[0]}</h1>
                   <p className="text-muted-foreground">Manage your department documents and security settings.</p>
                 </div>
 
@@ -129,8 +151,8 @@ export default function Home() {
               </div>
 
               <div className="space-y-6">
-                <UserProfileSummary user={user} />
-                {user.role === 'admin' && (
+                <UserProfileSummary user={appUser} />
+                {appUser.role === 'admin' && (
                   <Card className="bg-primary text-white border-none shadow-xl overflow-hidden relative group cursor-pointer hover:scale-[1.02] transition-transform" onClick={() => setActiveTab('audit')}>
                     <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
                       <TrendingUp size={120} />
@@ -152,7 +174,7 @@ export default function Home() {
             </div>
           )}
 
-          {activeTab === 'audit' && user.role === 'admin' && (
+          {activeTab === 'audit' && appUser.role === 'admin' && (
             <AuditLogViewer />
           )}
 
