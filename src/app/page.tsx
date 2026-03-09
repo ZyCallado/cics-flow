@@ -9,10 +9,12 @@ import { UserProfileSummary } from '@/components/dashboard/user-profile-summary'
 import { User as AppUser, UserRole } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Clock, TrendingUp, AlertCircle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FileText, Clock, TrendingUp, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { useUser, useFirestore, useMemoFirebase, useDoc, useAuth } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, serverTimestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export default function Home() {
   const { user: authUser, isUserLoading } = useUser();
@@ -32,24 +34,43 @@ export default function Home() {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
 
   useEffect(() => {
-    if (authUser && !isAdminChecking) {
+    if (authUser && !isAdminChecking && db) {
       const role: UserRole = adminDoc ? 'admin' : 'student';
-      setAppUser({
+      const userData: AppUser = {
         uid: authUser.uid,
         email: authUser.email || '',
         name: authUser.displayName || (role === 'admin' ? 'Administrator' : 'Student'),
         role: role,
         lastLogin: new Date().toISOString(),
         photoURL: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`
-      });
-    } else if (!authUser) {
+      };
+      setAppUser(userData);
+
+      // Persist user profile to Firestore
+      const userRef = doc(db, 'users', authUser.uid);
+      setDocumentNonBlocking(userRef, {
+        ...userData,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+    } else if (!authUser && !isUserLoading) {
       setAppUser(null);
     }
-  }, [authUser, adminDoc, isAdminChecking]);
+  }, [authUser, adminDoc, isAdminChecking, db, isUserLoading]);
 
   const handleLogout = async () => {
     await signOut(auth);
     setActiveTab('dashboard');
+  };
+
+  const handleMakeAdmin = () => {
+    if (!authUser || !db) return;
+    const adminDocRef = doc(db, 'roles_admin', authUser.uid);
+    setDocumentNonBlocking(adminDocRef, {
+      uid: authUser.uid,
+      email: authUser.email,
+      createdAt: new Date().toISOString()
+    }, { merge: true });
   };
 
   if (isUserLoading || (authUser && isAdminChecking)) {
@@ -188,6 +209,21 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* Prototyping Utility: Promote to Admin */}
+        {authUser && appUser.role !== 'admin' && (
+          <div className="fixed bottom-6 right-6 z-50 animate-bounce">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-white shadow-xl border-primary/20 hover:border-primary transition-colors"
+              onClick={handleMakeAdmin}
+            >
+              <ShieldCheck className="mr-2 h-4 w-4 text-primary" />
+              Promote to Admin (Dev Mode)
+            </Button>
+          </div>
+        )}
       </main>
     </div>
   );
