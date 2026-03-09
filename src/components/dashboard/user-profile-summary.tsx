@@ -12,7 +12,7 @@ interface UserProfileSummaryProps {
 }
 
 export function UserProfileSummary({ user }: UserProfileSummaryProps) {
-  const initials = user.name.split(' ').map(n => n[0]).join('').toUpperCase();
+  const initials = user.name.split(/[ ._]/).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
   return (
     <Card className="overflow-hidden border-none shadow-lg bg-white">

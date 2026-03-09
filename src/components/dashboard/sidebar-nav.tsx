@@ -20,11 +20,13 @@ interface SidebarNavProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onLogout: () => void;
+  userName?: string;
 }
 
-export function SidebarNav({ role, activeTab, setActiveTab, onLogout }: SidebarNavProps) {
+export function SidebarNav({ role, activeTab, setActiveTab, onLogout, userName }: SidebarNavProps) {
   const { user } = useUser();
-  const initials = user?.displayName?.split(' ').map(n => n[0]).join('').toUpperCase() || 'AD';
+  const displayName = userName || user?.displayName || 'User';
+  const initials = displayName.split(/[ ._]/).map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'U';
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['student', 'admin'] },
@@ -45,7 +47,7 @@ export function SidebarNav({ role, activeTab, setActiveTab, onLogout }: SidebarN
           </div>
           <div>
             <h2 className="text-lg font-bold text-[#0F172A] leading-none">CICS Portal</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] mt-1">Admin Panel</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#94A3B8] mt-1">{role === 'admin' ? 'Admin Panel' : 'Student Access'}</p>
           </div>
         </div>
       </div>
@@ -84,8 +86,8 @@ export function SidebarNav({ role, activeTab, setActiveTab, onLogout }: SidebarN
             <AvatarFallback className="bg-orange-50 text-primary font-bold">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-[#0F172A] truncate leading-none">{user?.displayName || 'John Doe'}</p>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8] mt-1">Admin Access</p>
+            <p className="text-sm font-bold text-[#0F172A] truncate leading-none">{displayName}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#94A3B8] mt-1">{role === 'admin' ? 'Admin Access' : 'Verified Student'}</p>
           </div>
           <Button
             variant="ghost"

@@ -51,10 +51,13 @@ export default function Home() {
     if (authUser && !isAdminChecking && !isProfileLoading && db) {
       const role: UserRole = adminDoc ? 'admin' : 'student';
       
+      // Derive name from email username
+      const emailUsername = authUser.email ? authUser.email.split('@')[0] : (role === 'admin' ? 'Administrator' : 'Student');
+      
       const userData: AppUser = {
         uid: authUser.uid,
         email: authUser.email || '',
-        name: authUser.displayName || (role === 'admin' ? 'Administrator' : 'Student'),
+        name: emailUsername,
         role: role,
         lastLogin: new Date().toISOString(),
         photoURL: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/200/200`,
@@ -135,6 +138,7 @@ export default function Home() {
           activeTab={activeTab} 
           setActiveTab={setActiveTab} 
           onLogout={handleLogout} 
+          userName={appUser.name}
         />
       </aside>
 
@@ -144,7 +148,7 @@ export default function Home() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-right-8 duration-700">
               <div className="lg:col-span-2 space-y-8">
                 <div>
-                  <h1 className="text-4xl font-bold tracking-tight text-[#0F172A]">Welcome back, {appUser.name.split(' ')[0]}!</h1>
+                  <h1 className="text-4xl font-bold tracking-tight text-[#0F172A]">Welcome back, {appUser.name}!</h1>
                   <p className="text-[#64748B] text-lg mt-2">
                     {appUser.role === 'admin' 
                       ? "Here's what's happening with the document registry today." 
