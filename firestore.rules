@@ -58,16 +58,17 @@ service cloud.firestore {
     }
 
     /**
-     * @description Rules for the admin role lookup collection. This is a restricted system collection.
+     * @description Rules for the admin role lookup collection. 
+     * Users can read their own admin status. For prototyping, users can create their own admin record.
      * @path /roles_admin/{adminId}
-     * @allow (get) If the user is an admin (to verify self or others).
-     * @deny (create, update, delete) For any non-admin or unauthorized operation.
      * @principle existence-based access control for administrative roles.
      */
     match /roles_admin/{adminId} {
-      allow get: if isAdmin();
+      allow get: if isSignedIn() && (isOwner(adminId) || isAdmin());
       allow list: if isAdmin();
-      allow create, update, delete: if isAdmin();
+      // Prototype-only: Allow users to promote themselves. In production, this would be isAdmin() only.
+      allow create: if isSignedIn() && isOwner(adminId);
+      allow update, delete: if isAdmin();
     }
 
     /**
