@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo } from 'react';
@@ -30,19 +29,19 @@ import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { Document as AppDocument, User as AppUser, AuditLog } from '@/lib/types';
 
 interface AdminDashboardOverviewProps {
-  onNavigate: (tab: string, sort?: 'newest' | 'popular') => void;
+  onNavigate: (tab: string, sort?: 'newest' | 'popular' | 'alphabetical') => void;
 }
 
 export function AdminDashboardOverview({ onNavigate }: AdminDashboardOverviewProps) {
   const db = useFirestore();
-  const [filter, setFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [filter, setFilter] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
 
   // Queries for real data
   const recentDocsQuery = useMemoFirebase(() => db ? query(collection(db, 'documents'), orderBy('uploadTimestamp', 'desc'), limit(5)) : null, [db]);
   const topDocsQuery = useMemoFirebase(() => db ? query(collection(db, 'documents'), orderBy('downloadCount', 'desc'), limit(4)) : null, [db]);
   const allDocsQuery = useMemoFirebase(() => db ? collection(db, 'documents') : null, [db]);
   const usersQuery = useMemoFirebase(() => db ? collection(db, 'users') : null, [db]);
-  const logsQuery = useMemoFirebase(() => db ? query(collection(db, 'activityLogs'), orderBy('timestamp', 'desc'), limit(200)) : null, [db]);
+  const logsQuery = useMemoFirebase(() => db ? query(collection(db, 'activityLogs'), orderBy('timestamp', 'desc'), limit(1000)) : null, [db]);
 
   const { data: recentDocs } = useCollection<AppDocument>(recentDocsQuery);
   const { data: topDocs } = useCollection<AppDocument>(topDocsQuery);
@@ -50,10 +49,16 @@ export function AdminDashboardOverview({ onNavigate }: AdminDashboardOverviewPro
   const { data: allUsers } = useCollection<AppUser>(usersQuery);
   const { data: recentLogs } = useCollection<AuditLog>(logsQuery);
 
-  // Calculate real stats
+  // Calculate filtered stats
   const stats = useMemo(() => {
     const activeThreshold = 15 * 60 * 1000; // 15 minutes
     const now = Date.now();
+    
+    let filterMs = 7 * 24 * 60 * 60 * 1000; // default weekly
+    if (filter === 'daily') filterMs = 24 * 60 * 60 * 1000;
+    if (filter === 'monthly') filterMs = 30 * 24 * 60 * 60 * 1000;
+
+    const periodStart = now - filterMs;
 
     return {
       totalDocs: allDocs?.length || 0,
@@ -63,47 +68,71 @@ export function AdminDashboardOverview({ onNavigate }: AdminDashboardOverviewPro
         const lastSeen = new Date(u.lastLogin).getTime();
         return now - lastSeen < activeThreshold;
       }).length || 0,
-      dailyLogins: recentLogs?.filter(l => {
-        const logDate = new Date(l.timestamp);
-        const isToday = logDate.toDateString() === new Date().toDateString();
-        return isToday && l.action.toLowerCase().includes('login');
+      periodLogins: recentLogs?.filter(l => {
+        const logTime = new Date(l.timestamp).getTime();
+        return logTime >= periodStart && l.action.toLowerCase().includes('login');
       }).length || 0
     };
-  }, [allDocs, allUsers, recentLogs]);
+  }, [allDocs, allUsers, recentLogs, filter]);
 
-  // Generate chart data from real logs
+  // Generate chart data based on filter
   const chartData = useMemo(() => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const counts: Record<string, number> = {};
-    
-    // Initialize last 7 days with 0
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      counts[days[d.getDay()]] = 0;
-    }
-
-    if (recentLogs) {
-      recentLogs.forEach(log => {
-        const logDate = new Date(log.timestamp);
-        const dayName = days[logDate.getDay()];
-        // Only count logins for current week days we initialized
-        if (counts[dayName] !== undefined && log.action.toLowerCase().includes('login')) {
-          counts[dayName]++;
-        }
-      });
-    }
-
-    // Sort to ensure correct sequence Mon-Sun (or whatever the current 7-day window is)
+    const now = new Date();
     const result = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const name = days[d.getDay()];
-      result.push({ name, total: counts[name] });
+
+    if (filter === 'daily') {
+      // Last 24 hours binned by 2-hour intervals
+      const hours = Array.from({ length: 12 }, (_, i) => {
+        const d = new Date(now.getTime() - (11 - i) * 2 * 60 * 60 * 1000);
+        return { 
+          name: `${d.getHours()}:00`, 
+          total: 0, 
+          timestamp: d.getTime(),
+          range: 2 * 60 * 60 * 1000 
+        };
+      });
+
+      if (recentLogs) {
+        recentLogs.forEach(log => {
+          const logTime = new Date(log.timestamp).getTime();
+          const bucket = hours.find(h => logTime >= h.timestamp && logTime < h.timestamp + h.range);
+          if (bucket && log.action.toLowerCase().includes('login')) {
+            bucket.total++;
+          }
+        });
+      }
+      return hours;
+
+    } else if (filter === 'weekly' || filter === 'monthly') {
+      // Last 7 or 30 days binned by day
+      const daysCount = filter === 'weekly' ? 7 : 30;
+      const days = Array.from({ length: daysCount }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (daysCount - 1 - i));
+        d.setHours(0, 0, 0, 0);
+        return { 
+          name: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), 
+          total: 0, 
+          timestamp: d.getTime() 
+        };
+      });
+
+      if (recentLogs) {
+        recentLogs.forEach(log => {
+          const logDate = new Date(log.timestamp);
+          logDate.setHours(0, 0, 0, 0);
+          const logTime = logDate.getTime();
+          const bucket = days.find(d => d.timestamp === logTime);
+          if (bucket && log.action.toLowerCase().includes('login')) {
+            bucket.total++;
+          }
+        });
+      }
+      return days;
     }
-    return result;
-  }, [recentLogs]);
+
+    return [];
+  }, [recentLogs, filter]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
@@ -157,15 +186,15 @@ export function AdminDashboardOverview({ onNavigate }: AdminDashboardOverviewPro
                 <LogIn className="h-6 w-6" />
               </div>
               <Badge className="bg-emerald-50 text-emerald-600 border-none flex items-center gap-1">
-                Live Activity
+                {filter.toUpperCase()} Logins
               </Badge>
             </div>
             <div className="mt-4">
-              <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest">Student Logins (Today)</p>
-              <h3 className="text-3xl font-bold text-[#0F172A] mt-1">{stats.dailyLogins.toLocaleString()}</h3>
+              <p className="text-xs font-bold text-[#94A3B8] uppercase tracking-widest">Student Logins ({filter})</p>
+              <h3 className="text-3xl font-bold text-[#0F172A] mt-1">{stats.periodLogins.toLocaleString()}</h3>
               <div className="mt-4 flex gap-1 items-end h-8">
                 {chartData.map((d, i) => (
-                  <div key={i} className="flex-1 bg-amber-200 rounded-t-sm" style={{ height: `${Math.min(100, (d.total / (stats.dailyLogins || 1)) * 100)}%` }} />
+                  <div key={i} className="flex-1 bg-amber-200 rounded-t-sm" style={{ height: `${Math.min(100, (d.total / (Math.max(1, stats.periodLogins))) * 100)}%` }} />
                 ))}
               </div>
             </div>
@@ -196,10 +225,10 @@ export function AdminDashboardOverview({ onNavigate }: AdminDashboardOverviewPro
           <CardHeader className="flex flex-row items-center justify-between pb-8">
             <div className="space-y-1">
               <CardTitle className="text-lg font-bold text-[#0F172A]">Login Frequency</CardTitle>
-              <p className="text-xs text-[#94A3B8]">Student access activity over the last 7 days</p>
+              <p className="text-xs text-[#94A3B8]">Student access activity ({filter})</p>
             </div>
             <Badge variant="secondary" className="bg-[#F8FAFC] text-[#64748B] border-none font-bold text-[10px] py-1 px-3 rounded-lg">
-              Past 7 Days
+              Live Trend
             </Badge>
           </CardHeader>
           <CardContent>
@@ -209,14 +238,15 @@ export function AdminDashboardOverview({ onNavigate }: AdminDashboardOverviewPro
                   <XAxis 
                     dataKey="name" 
                     stroke="#94A3B8" 
-                    fontSize={12} 
+                    fontSize={10} 
                     tickLine={false} 
                     axisLine={false} 
                     dy={10}
+                    interval={filter === 'monthly' ? 4 : 0}
                   />
                   <YAxis 
                     stroke="#94A3B8" 
-                    fontSize={12} 
+                    fontSize={10} 
                     tickLine={false} 
                     axisLine={false} 
                     tickFormatter={(value) => `${value}`}
@@ -229,7 +259,7 @@ export function AdminDashboardOverview({ onNavigate }: AdminDashboardOverviewPro
                     dataKey="total" 
                     stroke="#F2780D" 
                     strokeWidth={4} 
-                    dot={false}
+                    dot={filter === 'monthly' ? false : { r: 4, strokeWidth: 0, fill: '#F2780D' }}
                     activeDot={{ r: 6, strokeWidth: 0, fill: '#F2780D' }}
                   />
                 </LineChart>

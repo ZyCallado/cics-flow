@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -27,7 +26,7 @@ export default function Home() {
   const db = useFirestore();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [docSort, setDocSort] = useState<'newest' | 'popular'>('newest');
+  const [docSort, setDocSort] = useState<'newest' | 'popular' | 'alphabetical'>('newest');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const hasSyncedProfile = useRef(false);
   const hasLoggedSession = useRef(false);
@@ -135,7 +134,7 @@ export default function Home() {
     setShowOnboarding(false);
   };
 
-  const handleAdminNavigation = (tab: string, sort?: 'newest' | 'popular') => {
+  const handleAdminNavigation = (tab: string, sort?: 'newest' | 'popular' | 'alphabetical') => {
     setActiveTab(tab);
     if (sort) setDocSort(sort);
   };

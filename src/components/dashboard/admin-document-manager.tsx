@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
@@ -66,7 +65,7 @@ function formatBytes(bytes: number, decimals = 2) {
 }
 
 interface AdminDocumentManagerProps {
-  initialSort?: 'newest' | 'popular';
+  initialSort?: 'newest' | 'popular' | 'alphabetical';
 }
 
 export function AdminDocumentManager({ initialSort = 'newest' }: AdminDocumentManagerProps) {
@@ -75,7 +74,7 @@ export function AdminDocumentManager({ initialSort = 'newest' }: AdminDocumentMa
   const { toast } = useToast();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'newest' | 'popular'>(initialSort);
+  const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'alphabetical'>(initialSort);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<AppDocument | null>(null);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
@@ -88,8 +87,15 @@ export function AdminDocumentManager({ initialSort = 'newest' }: AdminDocumentMa
 
   const docsQuery = useMemoFirebase(() => {
     if (!db) return null;
-    const field = sortBy === 'newest' ? 'uploadTimestamp' : 'downloadCount';
-    return query(collection(db, 'documents'), orderBy(field, 'desc'));
+    let q;
+    if (sortBy === 'newest') {
+      q = query(collection(db, 'documents'), orderBy('uploadTimestamp', 'desc'));
+    } else if (sortBy === 'popular') {
+      q = query(collection(db, 'documents'), orderBy('downloadCount', 'desc'));
+    } else {
+      q = query(collection(db, 'documents'), orderBy('name', 'asc'));
+    }
+    return q;
   }, [db, sortBy]);
 
   const { data: documents, isLoading } = useCollection<AppDocument>(docsQuery);
@@ -185,6 +191,7 @@ export function AdminDocumentManager({ initialSort = 'newest' }: AdminDocumentMa
             <SelectContent>
               <SelectItem value="newest">Newest First</SelectItem>
               <SelectItem value="popular">Most Popular</SelectItem>
+              <SelectItem value="alphabetical">Alphabetical</SelectItem>
             </SelectContent>
           </Select>
 
