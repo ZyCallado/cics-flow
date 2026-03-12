@@ -29,7 +29,11 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { Document as AppDocument, User as AppUser, AuditLog } from '@/lib/types';
 
-export function AdminDashboardOverview() {
+interface AdminDashboardOverviewProps {
+  onNavigate: (tab: string, sort?: 'newest' | 'popular') => void;
+}
+
+export function AdminDashboardOverview({ onNavigate }: AdminDashboardOverviewProps) {
   const db = useFirestore();
   const [filter, setFilter] = useState<'daily' | 'weekly' | 'monthly'>('daily');
 
@@ -255,7 +259,11 @@ export function AdminDashboardOverview() {
             )) : (
               <p className="text-center py-12 text-[#94A3B8] text-sm">No download data available.</p>
             )}
-            <Button variant="outline" className="w-full mt-4 rounded-xl border-[#F1F5F9] font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]">
+            <Button 
+              variant="outline" 
+              className="w-full mt-4 rounded-xl border-[#F1F5F9] font-bold text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC]"
+              onClick={() => onNavigate('all-docs', 'popular')}
+            >
               View All Stats
             </Button>
           </CardContent>
@@ -265,7 +273,13 @@ export function AdminDashboardOverview() {
       <Card className="border-none shadow-sm rounded-2xl bg-white overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between p-6 pb-2">
           <CardTitle className="text-lg font-bold text-[#0F172A]">Recent Document Uploads</CardTitle>
-          <Button variant="ghost" className="text-[#F2780D] font-bold text-xs hover:bg-orange-50">View All</Button>
+          <Button 
+            variant="ghost" 
+            className="text-[#F2780D] font-bold text-xs hover:bg-orange-50"
+            onClick={() => onNavigate('all-docs', 'newest')}
+          >
+            View All
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">

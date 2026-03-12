@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useFirestore, useCollection, useUser, useMemoFirebase } from '@/firebase';
 import { collection, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import { setDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
@@ -47,7 +47,8 @@ import {
   Plus,
   AlertCircle,
   Download,
-  Eye
+  Eye,
+  ArrowUpDown
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -64,22 +65,32 @@ function formatBytes(bytes: number, decimals = 2) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-export function AdminDocumentManager() {
+interface AdminDocumentManagerProps {
+  initialSort?: 'newest' | 'popular';
+}
+
+export function AdminDocumentManager({ initialSort = 'newest' }: AdminDocumentManagerProps) {
   const { user } = useUser();
   const db = useFirestore();
   const { toast } = useToast();
   
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'popular'>(initialSort);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDoc, setEditingDoc] = useState<AppDocument | null>(null);
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (initialSort) setSortBy(initialSort);
+  }, [initialSort]);
+
   const docsQuery = useMemoFirebase(() => {
     if (!db) return null;
-    return query(collection(db, 'documents'), orderBy('uploadTimestamp', 'desc'));
-  }, [db]);
+    const field = sortBy === 'newest' ? 'uploadTimestamp' : 'downloadCount';
+    return query(collection(db, 'documents'), orderBy(field, 'desc'));
+  }, [db, sortBy]);
 
   const { data: documents, isLoading } = useCollection<AppDocument>(docsQuery);
 
@@ -165,67 +176,80 @@ export function AdminDocumentManager() {
           <p className="text-[#64748B] text-sm mt-1">Manage, upload, and organize corporate PDF assets.</p>
         </div>
         
-        <Dialog open={isCreateOpen} onOpenChange={(open) => {
-          setIsCreateOpen(open);
-          if (!open) setSelectedFile(null);
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#F2780D] hover:bg-[#D96B0B] text-white px-6 py-6 rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all hover:scale-[1.02] active:scale-95">
-              <Plus className="mr-2 h-5 w-5" />
-              Upload New Document
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-bold">New Document</DialogTitle>
-              <DialogDescription>Add a new PDF asset to the system registry.</DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSaveDocument} className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
-                <Input name="name" placeholder="Document Name" required className="h-12 rounded-xl" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</Label>
-                <Select name="category" defaultValue="Lecture Notes">
-                  <SelectTrigger className="h-12 rounded-xl">
-                    <SelectValue placeholder="Select Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
-                <Textarea name="description" placeholder="Brief description..." className="rounded-xl min-h-[100px]" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PDF File</Label>
-                <div className="relative">
-                  <Input 
-                    ref={fileInputRef}
-                    type="file" 
-                    accept="application/pdf" 
-                    onChange={handleFileChange} 
-                    required 
-                    className="h-12 rounded-xl cursor-pointer py-2 pr-10" 
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                    <AlertCircle className="h-4 w-4" />
-                  </div>
+        <div className="flex items-center gap-3">
+          <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <SelectTrigger className="w-[180px] h-12 rounded-xl border-none shadow-sm bg-white font-bold text-[#64748B]">
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Sort By" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="popular">Most Popular</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Dialog open={isCreateOpen} onOpenChange={(open) => {
+            setIsCreateOpen(open);
+            if (!open) setSelectedFile(null);
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#F2780D] hover:bg-[#D96B0B] text-white px-6 py-6 rounded-xl font-bold shadow-lg shadow-orange-500/20 transition-all hover:scale-[1.02] active:scale-95">
+                <Plus className="mr-2 h-5 w-5" />
+                Upload New Document
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-2xl font-bold">New Document</DialogTitle>
+                <DialogDescription>Add a new PDF asset to the system registry.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSaveDocument} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Title</Label>
+                  <Input name="name" placeholder="Document Name" required className="h-12 rounded-xl" />
                 </div>
-                {selectedFile && (
-                  <p className="text-[10px] text-primary font-bold">Size Detected: {formatBytes(selectedFile.size)}</p>
-                )}
-                <p className="text-[10px] text-muted-foreground font-medium italic">Requirement: Only .pdf files are accepted.</p>
-              </div>
-              <DialogFooter className="pt-4">
-                <Button type="submit" className="w-full h-12 bg-[#F2780D] hover:bg-[#D96B0B] rounded-xl font-bold">Upload Document</Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category</Label>
+                  <Select name="category" defaultValue="Lecture Notes">
+                    <SelectTrigger className="h-12 rounded-xl">
+                      <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Description</Label>
+                  <Textarea name="description" placeholder="Brief description..." className="rounded-xl min-h-[100px]" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">PDF File</Label>
+                  <div className="relative">
+                    <Input 
+                      ref={fileInputRef}
+                      type="file" 
+                      accept="application/pdf" 
+                      onChange={handleFileChange} 
+                      required 
+                      className="h-12 rounded-xl cursor-pointer py-2 pr-10" 
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                      <AlertCircle className="h-4 w-4" />
+                    </div>
+                  </div>
+                  {selectedFile && (
+                    <p className="text-[10px] text-primary font-bold">Size Detected: {formatBytes(selectedFile.size)}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground font-medium italic">Requirement: Only .pdf files are accepted.</p>
+                </div>
+                <DialogFooter className="pt-4">
+                  <Button type="submit" className="w-full h-12 bg-[#F2780D] hover:bg-[#D96B0B] rounded-xl font-bold">Upload Document</Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="relative">

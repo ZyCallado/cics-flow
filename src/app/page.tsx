@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -26,6 +27,7 @@ export default function Home() {
   const db = useFirestore();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [docSort, setDocSort] = useState<'newest' | 'popular'>('newest');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const hasSyncedProfile = useRef(false);
   const hasLoggedSession = useRef(false);
@@ -133,6 +135,11 @@ export default function Home() {
     setShowOnboarding(false);
   };
 
+  const handleAdminNavigation = (tab: string, sort?: 'newest' | 'popular') => {
+    setActiveTab(tab);
+    if (sort) setDocSort(sort);
+  };
+
   if (isUserLoading || (authUser && (isAdminChecking || isProfileLoading))) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
@@ -188,10 +195,10 @@ export default function Home() {
         <main className="flex-1 p-8 md:p-12 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'dashboard' && appUser.role === 'student' && <StudentDocumentBrowser user={appUser} />}
-            {activeTab === 'dashboard' && appUser.role === 'admin' && <AdminDashboardOverview />}
+            {activeTab === 'dashboard' && appUser.role === 'admin' && <AdminDashboardOverview onNavigate={handleAdminNavigation} />}
             
             {activeTab === 'downloads' && appUser.role === 'student' && <MyDownloadsViewer user={appUser} />}
-            {activeTab === 'all-docs' && appUser.role === 'admin' && <AdminDocumentManager />}
+            {activeTab === 'all-docs' && appUser.role === 'admin' && <AdminDocumentManager initialSort={docSort} />}
             {activeTab === 'users' && appUser.role === 'admin' && <AdminUserManagement />}
             {activeTab === 'audit' && appUser.role === 'admin' && <AuditLogViewer />}
 
