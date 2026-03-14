@@ -1,5 +1,5 @@
 
-"use client"
+"use client";
 
 import { User } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
