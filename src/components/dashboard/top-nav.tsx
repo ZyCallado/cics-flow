@@ -1,5 +1,5 @@
 
-"use client";
+"use client"
 
 import { Input } from '@/components/ui/input';
 import { Search, Bell, Settings } from 'lucide-react';
