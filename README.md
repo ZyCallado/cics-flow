@@ -1,6 +1,6 @@
 # CICS Flow | Document Management System
 
-CICS Flow is a high-fidelity document management portal specifically designed for the **College of Information and Computing Sciences (CICS)**. It streamlines the distribution of academic resources while providing administrators with robust oversight and AI-driven security insights.
+CICS Flow is a high-fidelity document management portal specifically designed for the **College of Information and Computing Studies (CICS)**. It streamlines the distribution of academic resources while providing administrators with robust oversight and AI-driven security insights.
 
 ## 🚀 Key Features
 
