@@ -41,26 +41,22 @@ The application enforces a strict **DBAC (Database-Backed Access Control)** mode
 - **Domain Restriction**: Hard-coded logic ensures only authorized institutional emails can bypass the initial authentication wall.
 - **Audit Trail**: Every significant action creates an entry in the `activityLogs` collection, which is used by the AI Auditor to maintain system integrity.
 
-## ⚙️ Setup & Deployment
-
-1. **Environment Variables**:
-   Ensure you have a `.env` file with your `GOOGLE_GENAI_API_KEY` for AI features.
-   
-2. **Firebase Configuration**:
-   Update `src/firebase/config.ts` with your specific Firebase Project credentials.
-
-3. **Firebase Console Steps**:
-   - Enable **Email/Password** and **Google** sign-in providers.
-   - Add your production domain to the **Authorized Domains** list in the Authentication settings.
-   - Create a `roles_admin` collection and add a document with the UID of your admin user to grant administrative access.
-
-4. **Development**:
-   ```bash
-   npm run dev
-   ```
-
-5. **Deployment**:
-   The project is configured for **Firebase App Hosting**. Configuration is managed via `apphosting.yaml`.
 
 ---
 *Developed for CICS Faculty and Students.*
+
+
+# Live Link
+[https://cics-flow.vercel.app/](https://cics-flow.vercel.app/)
+
+# Previews
+| Login Page | Student Dashboard |
+|:---:|:---:|
+| <img width="1910" height="946" alt="image" src="https://github.com/user-attachments/assets/a0d7c1b8-74de-4bc6-b98e-93b7b2db1f29" />
+ | <img width="1887" height="894" alt="image" src="https://github.com/user-attachments/assets/510dff58-23bb-4b89-bbee-8188c2e94f14" />
+ |
+
+| Document Management | Admin Panel |
+|:---:|:---:|
+|<img width="1891" height="1994" alt="image" src="https://github.com/user-attachments/assets/46974627-b3d0-409f-9735-93c4f5e3b7bb" />| <img width="1893" height="1384" alt="image" src="https://github.com/user-attachments/assets/9f1178d9-88f5-4fea-ad9d-4e47379d2463" />
+ |
