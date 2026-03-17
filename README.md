@@ -52,11 +52,8 @@ The application enforces a strict **DBAC (Database-Backed Access Control)** mode
 # Previews
 | Login Page | Student Dashboard |
 |:---:|:---:|
-| <img width="1910" height="946" alt="image" src="https://github.com/user-attachments/assets/a0d7c1b8-74de-4bc6-b98e-93b7b2db1f29" />
- | <img width="1887" height="894" alt="image" src="https://github.com/user-attachments/assets/510dff58-23bb-4b89-bbee-8188c2e94f14" />
- |
+| <img width="652" height="862" alt="image" src="https://github.com/user-attachments/assets/5a39ad6a-80f3-4745-b313-fc57ff51379f" /> | <img width="1597" height="840" alt="image" src="https://github.com/user-attachments/assets/eb1b6048-7762-496a-bbbf-9a63cb02b99c" /> |
 
-| Document Management | Admin Panel |
+| Document Management | Admin Dashboard |
 |:---:|:---:|
-|<img width="1891" height="1994" alt="image" src="https://github.com/user-attachments/assets/46974627-b3d0-409f-9735-93c4f5e3b7bb" />| <img width="1893" height="1384" alt="image" src="https://github.com/user-attachments/assets/9f1178d9-88f5-4fea-ad9d-4e47379d2463" />
- |
+|<img width="1602" height="850" alt="image" src="https://github.com/user-attachments/assets/6cdeac9d-5d25-41f0-8647-ec386a9dd117" /> | <img width="1533" height="836" alt="image" src="https://github.com/user-attachments/assets/e799b36c-8148-40bd-91d6-4d8b7a6b99c6" /> |
